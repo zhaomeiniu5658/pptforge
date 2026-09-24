@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+data/
+artifacts/
+*.pyc
+.DS_Store
+backups/
+*.tsbuildinfo
+# An empty nested repository artifact; the application source lives at the root.
+AI_PPT_html/

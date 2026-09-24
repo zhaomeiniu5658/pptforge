@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+  Every value in here is known, so what calque measures can be compared against
+  what was actually rendered rather than against somebody's eye. This is the
+  fixture the accuracy numbers in the README come from.
+
+  KNOWN VALUES
+    page background  #ffffff
+    body text        #333333 at 16px/400
+    heading          #111111 at 48px/700
+    sub              #666666 at 20px/400
+    accent           #2563eb
+    button           #2563eb fill, #ffffff text, 8px radius
+    card             #f4f4f5 fill, 12px radius
+    container        1040px, centred in 1440 -> gutter 200
+-->
+<meta charset="utf-8">
+<title>calque ground truth</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #ffffff;
+    color: #333333;
+    font: 400 16px/1.5 Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { width: 1040px; margin: 0 auto; }
+
+  nav { padding: 24px 0; }
+  nav .wrap { display: flex; justify-content: space-between; align-items: center; }
+  .brand { font-size: 18px; font-weight: 700; color: #111111; }
+  .links { display: flex; gap: 32px; }
+  .links span { font-size: 15px; color: #666666; }
+
+  .hero { padding: 96px 0 104px; text-align: center; }
+  h1 { margin: 0; font-size: 48px; font-weight: 700; line-height: 1.1; color: #111111; }
+  .sub { margin: 20px 0 0; font-size: 20px; font-weight: 400; color: #666666; }
+  .cta {
+    display: inline-block; margin-top: 36px;
+    background: #2563eb; color: #ffffff;
+    font-size: 16px; font-weight: 600;
+    padding: 14px 28px; border-radius: 8px; text-decoration: none;
+  }
+
+  .features { background: #fafafa; padding: 80px 0; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .card { background: #f4f4f5; border-radius: 12px; padding: 28px; }
+  .card h3 { margin: 0 0 12px; font-size: 20px; font-weight: 600; color: #111111; }
+  .card p { margin: 0; font-size: 16px; font-weight: 400; color: #333333; }
+
+  footer { padding: 48px 0; text-align: center; }
+  footer p { margin: 0; font-size: 14px; color: #666666; }
+</style>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">Northwind</span>
+    <span class="links"><span>Product</span><span>Pricing</span><span>Company</span></span>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Ship the thing today</h1>
+    <p class="sub">A boring page with values that are known exactly.</p>
+    <a class="cta" href="#">Get started</a>
+  </div>
+</section>
+
+<section class="features">
+  <div class="wrap grid">
+    <div class="card">
+      <h3>Measured</h3>
+      <p>Colours come from the pixels rather than from a guess.</p>
+    </div>
+    <div class="card">
+      <h3>Repeatable</h3>
+      <p>The same image gives the same answer every single time.</p>
+    </div>
+    <div class="card">
+      <h3>Honest</h3>
+      <p>Whatever could not be read is written down as unread.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap"><p>Copyright Northwind. All rights reserved.</p></div>
+</footer>

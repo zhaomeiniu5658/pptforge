@@ -1,0 +1,23 @@
+{
+  "name": "quarkmed-workbench",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "services/render-tools",
+    "packages/html-engine",
+    "third_party/calque"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w third_party/calque && npm run build -w apps/web",
+    "test": "npm run test -w packages/html-engine",
+    "tools": "npm run dev -w services/render-tools"
+  },
+  "overrides": {
+    "sharp": "^0.35.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.8"
+  }
+}

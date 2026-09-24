@@ -1,0 +1,1 @@
+{"name":"@quark/render-tools","version":"0.1.0","type":"module","scripts":{"dev":"node src/server.js"},"dependencies":{"@quark/html-engine":"0.1.0","@tailwindcss/container-queries":"^0.1.1","@tailwindcss/forms":"^0.5.10","acorn":"^8.15.0","fastify":"^5.6.0","playwright-core":"1.58.2","sharp":"^0.35.4","tailwindcss":"^3.4.17"}}

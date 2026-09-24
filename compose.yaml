@@ -1,0 +1,78 @@
+name: quarkmed
+services:
+  db:
+    profiles: [local-db]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: quark
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:-quarkmed-local}
+      POSTGRES_DB: quarkmed
+    ports: ["127.0.0.1:5441:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quark -d quarkmed"]
+      interval: 5s
+      retries: 15
+    restart: unless-stopped
+  queue:
+    image: valkey/valkey:8-alpine
+    command: valkey-server --appendonly yes
+    ports: ["127.0.0.1:6387:6379"]
+    volumes: ["queue:/data"]
+    restart: unless-stopped
+  tools:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/tools.Dockerfile
+    environment:
+      TOOL_SECRET: ${TOOL_SECRET}
+      CHROME_PATH: /usr/bin/chromium
+      CONTAINER: "true"
+    shm_size: 1gb
+    restart: unless-stopped
+  api:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/api.Dockerfile
+    env_file: .env
+    environment: &backend
+      PGHOST: ${DOCKER_PGHOST:-${PGHOST:-}}
+      PGPORT: ${DOCKER_PGPORT:-${PGPORT:-5432}}
+      BROKER_URL: redis://queue:6379/0
+      TOOL_URL: http://tools:8012
+      STORAGE_ROOT: /data/assets
+      SOFFICE_PATH: /usr/bin/soffice
+    command: sh -c 'alembic -c migrations/alembic.ini upgrade head && uvicorn quark.main:app --host 0.0.0.0 --port 8011'
+    volumes: ["assets:/data/assets"]
+    ports: ["127.0.0.1:8011:8011"]
+    depends_on:
+      queue:
+        condition: service_started
+      tools:
+        condition: service_started
+    restart: unless-stopped
+  worker:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/api.Dockerfile
+    env_file: .env
+    environment: *backend
+    command: celery -A quark.tasks:celery worker --loglevel=info --concurrency=2
+    volumes: ["assets:/data/assets"]
+    depends_on: [api]
+    restart: unless-stopped
+  web:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    ports: ["5174:80"]
+    depends_on: [api]
+    restart: unless-stopped
+volumes:
+  pgdata:
+  queue:
+  assets:

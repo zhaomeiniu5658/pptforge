@@ -1,0 +1,355 @@
+<!DOCTYPE html><html lang="zh-CN" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>项目方案管理 - Quarkmed 夸克医药</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-typography">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+<meta content="web_standard" name="shell-type">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"></head>
+<body class="bg-[#f4f7fb] text-slate-700 min-h-screen flex flex-col antialiased">
+<!-- BEGIN: MainHeader -->
+<!-- 顶部横向主导航栏，保持与模板库横向版完全统一的设计语言 -->
+<header class="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-sm" data-purpose="top-navigation">
+<div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between gap-6">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-8 shrink-0">
+<a class="flex items-center gap-2.5 group" href="#">
+<div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+<path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.2l6.5 3.6-2.5 1.4-6.5-3.6 2.5-1.4zM5.5 8.5l6.5 3.6v7.3l-6.5-3.6V8.5zm8 10.9v-7.3l6.5-3.6v7.3l-6.5 3.6z"></path>
+</svg>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-lg text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">Quarkmed</span>
+<span class="text-[10px] text-slate-400 tracking-wider font-medium mt-0.5">夸克医药</span>
+</div>
+</a>
+<!-- Horizontal Nav Links -->
+<nav class="flex items-center gap-1.5 text-sm font-medium">
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            首页
+          </a>
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.5L18 8.5V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            PPT模板库
+          </a>
+<!-- Active Nav Item -->
+<a class="px-3.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 font-semibold transition-all flex items-center gap-1.5 shadow-sm shadow-blue-100" href="#">
+<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            项目方案管理
+          </a>
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            模板管理
+          </a>
+
+<a class="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 border border-dashed border-blue-200 rounded-lg hover:border-blue-300 transition-colors ml-1" href="#">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            新建项目向导
+          </a>
+</nav>
+</div>
+<!-- Right Header Actions (Search & User Profile) -->
+<div class="flex items-center gap-4">
+<!-- Quick Search -->
+<div class="relative w-64">
+<input class="w-full bg-slate-100/80 border-0 rounded-full pl-9 pr-4 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" placeholder="搜索模板名称、关键词..." type="text">
+<svg class="w-4 h-4 text-slate-400 absolute left-3 top-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<!-- User Menu -->
+<div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+<div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium text-xs shadow-inner">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-700">管理员</span>
+<svg class="w-3.5 h-3.5 text-slate-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 max-w-[1600px] w-full mx-auto px-6 py-5 space-y-4" data-purpose="page-main-container"><div class="flex flex-col w-full space-y-4 font-body">
+<!-- 1. 面包屑与顶部信息栏 -->
+<div class="flex flex-col gap-3">
+<!-- 面包屑导航 -->
+<nav class="flex items-center gap-2 text-xs text-slate-500">
+<a class="hover:text-blue-600 transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-sm">folder_managed</span>
+        项目方案管理
+      </a>
+<span class="text-slate-300">/</span>
+<a class="hover:text-blue-600 transition-colors font-mono" href="#">QM-2025-0801 创新药临床研究项目方案</a>
+<span class="text-slate-300">/</span>
+<a class="hover:text-blue-600 transition-colors" href="#">团队成员PPT制作协同</a>
+<span class="text-slate-300">/</span>
+<span class="text-slate-800 font-semibold flex items-center gap-1 bg-blue-50/80 text-blue-700 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-xs">person</span>
+        编辑人员：张立明 (总编审 / PI)
+      </span>
+</nav>
+<!-- 顶部人员与分册状态卡片 -->
+<div class="bg-white rounded-xl shadow-sm p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+<!-- 成员身份与负责模块 -->
+<div class="flex items-start sm:items-center gap-3.5">
+<div class="relative">
+<div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-md shadow-blue-500/20">
+            立明
+          </div>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm" title="在线协同中">
+<span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap">
+<h1 class="text-base font-bold text-slate-800 tracking-tight">张立明</h1>
+<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">研发医学部 · 首席医学官 / PI</span>
+<span class="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 4/4 全部交付
+            </span>
+<span class="text-[11px] font-mono text-slate-400">版本 v2.4 (10:48 实时已存)</span>
+</div>
+<div class="flex items-center gap-1.5 text-xs text-slate-500">
+<span class="font-medium text-slate-700">负责模块：</span>
+<span class="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded text-slate-600">01 封面与立项概述</span>
+<span class="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded text-slate-600">02 科学机理与靶向机制</span>
+<span class="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded text-slate-600">03 临床执行摘要</span>
+</div>
+</div>
+</div>
+<!-- 核心功能操作区 -->
+<div class="flex items-center gap-2 flex-wrap shrink-0"><button class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-blue-500/30 flex items-center gap-1.5 transition-all"><span class="material-symbols-outlined text-base">add_to_photos</span>从模板库添加</button><button class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-blue-500/20 flex items-center gap-1.5 transition-all"><span class="material-symbols-outlined text-base">auto_awesome</span>AI生成页面</button><button class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5"><span class="material-symbols-outlined text-base">save</span>保存</button></div>
+</div>
+</div>
+<!-- 2. 核心编辑工作台主视图 (经典三栏交互架构) -->
+<div class="grid grid-cols-12 gap-4 items-start min-h-[740px]">
+<!-- 左侧：幻灯片大纲缩略图列表 -->
+<aside class="col-span-12 lg:col-span-3 xl:col-span-2 bg-white rounded-xl shadow-sm p-3 flex flex-col space-y-3">
+<div class="flex items-center justify-between pb-2 border-b border-slate-100">
+<div>
+<h2 class="text-xs font-bold text-slate-800">幻灯片大纲</h2>
+<span class="text-[10px] text-slate-400">共 4 页 · 可拖拽调整顺序</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-slate-100 text-slate-600 text-xs transition-colors" title="新增空白页">
+<span class="material-symbols-outlined text-sm">note_add</span>
+</button>
+<button class="p-1 rounded hover:bg-slate-100 text-blue-600 text-xs transition-colors" title="从模板追加">
+<span class="material-symbols-outlined text-sm">library_add</span>
+</button>
+</div>
+</div>
+<!-- 缩略图列表 -->
+<div class="space-y-2.5 overflow-y-auto max-h-[580px] pr-1">
+<!-- Slide 01: 当前高亮选中 -->
+<div class="relative group rounded-lg p-2 bg-blue-50/60 shadow-sm transition-all cursor-pointer ring-2 ring-blue-600">
+<div class="flex items-center justify-between mb-1.5 text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="w-4 h-4 bg-blue-600 text-white font-mono text-[10px] rounded flex items-center justify-center font-bold">1</span>
+<span class="font-medium text-blue-900 truncate max-w-[95px]">项目方案首页封面</span>
+</div>
+
+</div>
+<!-- 迷你缩略图预览 -->
+<div class="w-full aspect-[16/9] bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-md p-2 flex flex-col justify-between text-white shadow-inner relative overflow-hidden">
+<div class="w-8 h-1 bg-blue-500/80 rounded-full"></div>
+<div class="space-y-0.5">
+<div class="text-[7px] text-blue-300 font-mono scale-90 origin-left">PHASE IIA PROTOCOL</div>
+<div class="text-[8px] font-bold text-white line-clamp-1">177Lu-PR02 临床研究方案</div>
+</div>
+<div class="flex justify-between items-center text-[6px] text-slate-400">
+<span class="">QM-2025</span>
+<span class="">张立明</span>
+</div>
+</div>
+</div>
+<!-- Slide 02 -->
+<div class="relative group rounded-lg p-2 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-1.5 text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="w-4 h-4 bg-slate-300 text-slate-700 font-mono text-[10px] rounded flex items-center justify-center font-bold">2</span>
+<span class="font-medium text-slate-700 truncate max-w-[95px]">立项背景与需求</span>
+</div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-xs hover:text-blue-600">content_copy</span>
+<span class="material-symbols-outlined text-xs hover:text-red-500">delete</span>
+</div>
+</div>
+<!-- 迷你缩略图预览 -->
+<div class="w-full aspect-[16/9] bg-white rounded-md p-2 flex flex-col justify-between text-slate-700 shadow-sm relative overflow-hidden">
+<div class="text-[7px] font-semibold text-slate-800">01 疾病背景与GEP-NETs现状</div>
+<div class="grid grid-cols-2 gap-1 my-0.5">
+<div class="bg-slate-100 h-6 rounded p-1">
+<div class="w-6 h-1 bg-blue-400 rounded-full mb-1"></div>
+<div class="w-10 h-0.5 bg-slate-300 rounded"></div>
+</div>
+<div class="bg-slate-100 h-6 rounded p-1">
+<div class="w-6 h-1 bg-emerald-400 rounded-full mb-1"></div>
+<div class="w-10 h-0.5 bg-slate-300 rounded"></div>
+</div>
+</div>
+<div class="text-[6px] text-slate-400 flex justify-between">
+<span class="">5年生存率对比</span>
+<span class="text-emerald-600">已校对</span>
+</div>
+</div>
+</div>
+<!-- Slide 03 -->
+<div class="relative group rounded-lg p-2 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-1.5 text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="w-4 h-4 bg-slate-300 text-slate-700 font-mono text-[10px] rounded flex items-center justify-center font-bold">3</span>
+<span class="font-medium text-slate-700 truncate max-w-[95px]">作用机制与靶向螯合</span>
+</div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-xs hover:text-blue-600">content_copy</span>
+<span class="material-symbols-outlined text-xs hover:text-red-500">delete</span>
+</div>
+</div>
+<div class="w-full aspect-[16/9] bg-white rounded-md p-2 flex flex-col justify-between text-slate-700 shadow-sm relative overflow-hidden">
+<div class="text-[7px] font-semibold text-slate-800">SSTR2受体靶向机制假说</div>
+<div class="flex items-center justify-center py-1">
+<div class="w-10 h-6 rounded bg-blue-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-600 text-sm">hub</span>
+</div>
+</div>
+<div class="text-[6px] text-slate-400">核素递送动力学模拟图</div>
+</div>
+</div>
+<!-- Slide 04 -->
+<div class="relative group rounded-lg p-2 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer">
+<div class="flex items-center justify-between mb-1.5 text-[11px]">
+<div class="flex items-center gap-1.5">
+<span class="w-4 h-4 bg-slate-300 text-slate-700 font-mono text-[10px] rounded flex items-center justify-center font-bold">4</span>
+<span class="font-medium text-slate-700 truncate max-w-[95px]">核心假设与执行摘要</span>
+</div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined text-xs hover:text-blue-600">content_copy</span>
+<span class="material-symbols-outlined text-xs hover:text-red-500">delete</span>
+</div>
+</div>
+<div class="w-full aspect-[16/9] bg-white rounded-md p-2 flex flex-col justify-between text-slate-700 shadow-sm relative overflow-hidden">
+<div class="text-[7px] font-semibold text-slate-800">执行摘要与关键里程碑</div>
+<div class="space-y-0.5">
+<div class="w-full h-1.5 bg-slate-100 rounded"></div>
+<div class="w-4/5 h-1.5 bg-slate-100 rounded"></div>
+</div>
+<div class="text-[6px] text-blue-600 font-medium">交付目标：IND批件递交</div>
+</div>
+</div>
+</div>
+<!-- 底部快捷拖拽解析区 -->
+<div class="mt-auto pt-2 border-t border-slate-100">
+<button class="w-full rounded-lg border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/50 hover:bg-blue-50 p-2.5 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 group"><div class="flex items-center gap-1.5 text-blue-600 font-semibold text-xs group-hover:text-blue-700"><span class="material-symbols-outlined text-base">add_circle</span><span class="">添加页面</span></div><p class="text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors">新建空白页或从模版新增</p></button>
+</div>
+</aside>
+<!-- 中间：高保真画布编辑区 -->
+<section class="col-span-12 lg:col-span-9 xl:col-span-7 flex flex-col space-y-3">
+<!-- 画布顶部工具栏 -->
+<div class="bg-white rounded-xl shadow-sm px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto"><div class="flex items-center gap-1 shrink-0"><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="撤销"><span class="material-symbols-outlined text-base">undo</span></button><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="重做"><span class="material-symbols-outlined text-base">redo</span></button><div class="h-4 w-px bg-slate-200 mx-1"></div><select class="text-xs bg-slate-100 border-0 rounded px-2 py-1 text-slate-700 focus:ring-1 focus:ring-blue-500 font-medium"><option>标准黑体 (PingFang)</option><option>Public Sans</option><option>宋体</option></select><select class="text-xs bg-slate-100 border-0 rounded px-2 py-1 text-slate-700 focus:ring-1 focus:ring-blue-500 font-mono"><option>32px (大标题)</option><option>24px (中标题)</option><option>16px (正文)</option><option>12px (标注)</option></select><button class="p-1.5 rounded bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-colors" title="加粗">B</button><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600 italic text-xs" title="斜体">I</button><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600 underline text-xs" title="下划线">U</button><div class="h-4 w-px bg-slate-200 mx-1"></div><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600 flex items-center gap-0.5" title="文字颜色"><span class="material-symbols-outlined text-base text-blue-600">format_color_text</span></button><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="左对齐"><span class="material-symbols-outlined text-base">format_align_left</span></button><button class="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="居中对齐"><span class="material-symbols-outlined text-base">format_align_center</span></button></div><div class="flex items-center gap-2 shrink-0"><button class="px-2.5 py-1 text-xs rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center gap-1 font-medium transition-colors"><span class="material-symbols-outlined text-sm">add_box</span>添加文本框</button><button class="px-2.5 py-1 text-xs rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-medium transition-colors"><span class="material-symbols-outlined text-sm text-slate-600">image</span>插入图片</button></div></div>
+<!-- 画布工作区容器 -->
+<div class="relative bg-slate-200/70 rounded-xl p-4 sm:p-6 shadow-inner flex items-center justify-center overflow-hidden">
+<!-- 16:9 高保真幻灯片画板 (Slide 01 封面高保真渲染态) -->
+<div class="w-full aspect-[16/9] max-w-[820px] bg-slate-950 rounded-xl shadow-2xl relative overflow-hidden flex flex-col justify-between p-8 text-white select-none group"><div class="relative z-10 flex items-center justify-between border-b border-white/10 pb-3 gap-2"><div class="flex items-center gap-2 flex-1"><span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span><input type="text" value="QUARKMED CLINICAL | PHASE IIA PROTOCOL" class="bg-transparent border border-white/10 hover:border-white/30 focus:border-blue-400 focus:bg-white/5 rounded px-2 py-0.5 text-[11px] tracking-widest font-mono text-blue-400 font-semibold uppercase w-full max-w-sm focus:ring-0 transition-colors" title="点击直接修改副标"></div><div class="flex items-center gap-2 shrink-0"><input type="text" value="QM-2025-0801" class="w-24 bg-white/10 hover:bg-white/20 focus:bg-white/20 border border-transparent focus:border-blue-400 rounded px-2 py-0.5 text-[10px] text-slate-300 font-mono text-center focus:ring-0" title="项目编号"><input type="text" value="严格保密 / 研发内参" class="w-28 bg-blue-500/20 hover:bg-blue-500/30 border border-transparent focus:border-blue-400 rounded px-2 py-0.5 text-[10px] text-blue-300 text-center font-medium focus:ring-0" title="保密级别标签"></div></div><div class="relative z-10 my-auto py-3 space-y-2.5"><div class="flex items-center gap-2"><input type="text" value="符合 NMPA / ICH GCP 国际临床申报规范" class="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 focus:border-blue-400 rounded-full px-3 py-0.5 text-blue-300 text-xs font-medium focus:ring-0 w-80" title="规范标签"></div><div class="space-y-1"><label class="text-[10px] text-blue-400/80 font-medium block">幻灯片大标题：</label><input type="text" value="创新靶向核药 177Lu-PR02 临床研究项目方案汇报" class="w-full bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-blue-400/40 rounded-lg p-2 text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all"></div><div class="space-y-1"><label class="text-[10px] text-slate-400 font-medium block">副标题 / 研究概述说明：</label><textarea rows="2" class="w-full bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/10 hover:border-white/20 focus:border-blue-400 rounded-lg p-2 text-xs sm:text-sm text-slate-200 font-light leading-relaxed focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all resize-none">针对晚期胃肠胰神经内分泌瘤 (GEP-NETs) 的剂量递增、疗效探索及放射动力学评价之多中心随机对照临床试验实施规划</textarea></div></div><div class="relative z-10 grid grid-cols-3 gap-3 border-t border-white/10 pt-3 text-xs"><div class="bg-white/5 rounded-lg p-2 border border-white/5"><div class="text-[9px] text-slate-400 uppercase tracking-wider font-mono">Principal Investigator</div><input type="text" value="张立明 博士 (CMO / PI)" class="w-full bg-transparent border-0 p-0 font-medium text-white text-xs mt-0.5 focus:ring-0 text-left border-b border-transparent focus:border-blue-400"></div><div class="bg-white/5 rounded-lg p-2 border border-white/5"><div class="text-[9px] text-slate-400 uppercase tracking-wider font-mono">Primary Indication</div><input type="text" value="GEP-NETs (SSTR2高表达)" class="w-full bg-transparent border-0 p-0 font-medium text-white text-xs mt-0.5 focus:ring-0 text-left border-b border-transparent focus:border-blue-400"></div><div class="bg-white/5 rounded-lg p-2 border border-white/5 text-right"><div class="text-[9px] text-slate-400 uppercase tracking-wider font-mono">Submission Target</div><input type="text" value="2025 Q3 CDE 会议" class="w-full bg-transparent border-0 p-0 font-semibold text-emerald-400 font-mono text-xs mt-0.5 focus:ring-0 text-right border-b border-transparent focus:border-blue-400"></div></div></div>
+</div>
+<!-- 画布底部状态与演讲者备注区 -->
+<div class="bg-white rounded-xl shadow-sm px-4 py-2.5 flex flex-col gap-2">
+
+<!-- 可折叠展开的演讲者备注 -->
+
+</div>
+</section>
+<!-- 右侧：多功能配置与模板替换抽屉面板 -->
+<aside class="col-span-12 xl:col-span-3 bg-white rounded-xl shadow-sm p-4 flex flex-col space-y-4"><div class="flex items-center justify-between pb-3 border-b border-slate-100"><div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-blue-600 text-lg">tune</span><h3 class="text-xs font-bold text-slate-800">要素与文字设置</h3></div><span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium">简单编辑模式</span></div><div class="space-y-4"><div class="space-y-1.5 pb-3 border-b border-slate-100"><div class="flex items-center justify-between"><label class="text-xs font-semibold text-slate-700 block">修改标题 / 幻灯片大标题</label><span class="text-[10px] text-blue-600 font-mono">Title Field</span></div><div class="relative flex items-center"><input type="text" value="创新靶向核药 177Lu-PR02 临床研究项目方案汇报" placeholder="请输入幻灯片标题..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-8 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"><button type="button" title="清空/重置" class="absolute right-2 text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-sm">cancel</span></button></div><p class="text-[10px] text-slate-400 leading-tight">修改后实时同步至中间画板大标题区域</p></div><div class="space-y-2"><label class="text-xs font-semibold text-slate-700 block">文字与排版</label><div class="grid grid-cols-2 gap-2"><div><span class="text-[10px] text-slate-400 block mb-1">字体大小</span><select class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:ring-1 focus:ring-blue-500"><option>大号 (32px)</option><option>适中 (24px)</option><option>标准 (16px)</option></select></div><div><span class="text-[10px] text-slate-400 block mb-1">对齐方式</span><div class="flex bg-slate-50 border border-slate-200 rounded-lg p-0.5"><button class="flex-1 py-1 rounded bg-white shadow-sm text-blue-600 text-xs flex justify-center"><span class="material-symbols-outlined text-sm">format_align_left</span></button><button class="flex-1 py-1 text-slate-500 text-xs flex justify-center"><span class="material-symbols-outlined text-sm">format_align_center</span></button><button class="flex-1 py-1 text-slate-500 text-xs flex justify-center"><span class="material-symbols-outlined text-sm">format_align_right</span></button></div></div></div></div><div class="space-y-2"><label class="text-xs font-semibold text-slate-700 block">页面背景底色</label><div class="grid grid-cols-3 gap-2"><button class="p-2 rounded-lg bg-slate-950 text-white text-[11px] font-medium border-2 border-blue-500 flex items-center justify-center gap-1">深蓝底</button><button class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium border border-slate-200 flex items-center justify-center gap-1">极简白</button><button class="p-2 rounded-lg bg-gradient-to-r from-blue-900 to-indigo-900 text-white text-[11px] font-medium border border-slate-200 flex items-center justify-center gap-1">微渐变</button></div></div><div class="space-y-2.5 pt-3 border-t border-slate-100"><label class="text-xs font-semibold text-slate-700 block">要素显示开关</label><div class="space-y-2 text-xs"><label class="flex items-center justify-between text-slate-700 p-1.5 rounded hover:bg-slate-50 cursor-pointer"><span class="">顶部项目编号 &amp; 保密级别</span><input type="checkbox" checked="" class="rounded text-blue-600 focus:ring-0 w-4 h-4"></label><label class="flex items-center justify-between text-slate-700 p-1.5 rounded hover:bg-slate-50 cursor-pointer"><span class="">法规符合标签 (NMPA / ICH GCP)</span><input type="checkbox" checked="" class="rounded text-blue-600 focus:ring-0 w-4 h-4"></label><label class="flex items-center justify-between text-slate-700 p-1.5 rounded hover:bg-slate-50 cursor-pointer"><span class="">底部主要研究者与目标</span><input type="checkbox" checked="" class="rounded text-blue-600 focus:ring-0 w-4 h-4"></label></div></div><div class="pt-3 border-t border-slate-100 bg-blue-50/50 rounded-lg p-2.5"><div class="flex items-center gap-1 text-blue-700 text-xs font-semibold mb-1"><span class="material-symbols-outlined text-sm">tips_and_updates</span><span class="">操作小贴士</span></div><p class="text-[11px] text-slate-500 leading-relaxed">直接在中间幻灯片区域点击任意文字框即可直接录入和修改，所有修改自动实时同步。</p></div></div></aside>
+</div>
+<!-- 3. 底部吸顶快捷保存与操作栏 -->
+<footer class="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border-t border-slate-200/80 px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+<!-- 左侧状态提示 -->
+<div class="flex items-center gap-2 text-xs text-slate-500">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+
+
+</div>
+<!-- 右侧操作按钮组 -->
+<div class="flex items-center gap-2.5">
+
+
+<button class="px-3.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">download</span>
+        导出当前分册 (.html)
+      </button>
+<button class="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-500/30 flex items-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+        完成并提交总编审核
+      </button>
+</div>
+</footer>
+</div>
+<!-- 简单交互切换脚本：支持右侧Tab切换与状态联动 -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnProp = document.getElementById('btn-prop');
+    const btnTmpl = document.getElementById('btn-tmpl');
+    const panelProp = document.getElementById('panel-prop');
+    const panelTmpl = document.getElementById('panel-tmpl');
+
+    if (btnProp && btnTmpl && panelProp && panelTmpl) {
+      btnProp.addEventListener('click', () => {
+        btnProp.classList.add('bg-white', 'text-blue-700', 'font-semibold', 'shadow-sm');
+        btnProp.classList.remove('text-slate-600', 'font-medium');
+        btnTmpl.classList.remove('bg-white', 'text-blue-700', 'font-semibold', 'shadow-sm');
+        btnTmpl.classList.add('text-slate-600', 'font-medium');
+        
+        panelProp.classList.remove('hidden');
+        panelTmpl.classList.add('hidden');
+      });
+
+      btnTmpl.addEventListener('click', () => {
+        btnTmpl.classList.add('bg-white', 'text-blue-700', 'font-semibold', 'shadow-sm');
+        btnTmpl.classList.remove('text-slate-600', 'font-medium');
+        btnProp.classList.remove('bg-white', 'text-blue-700', 'font-semibold', 'shadow-sm');
+        btnProp.classList.add('text-slate-600', 'font-medium');
+
+        panelTmpl.classList.remove('hidden');
+        panelProp.classList.add('hidden');
+      });
+    }
+  });
+</script></main>
+<!-- END: MainContent -->
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>模板分类维护 - Quarkmed 夸克医药 PPT方案智造平台</title>
+<!-- Tailwind CSS CDN with forms and container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Custom Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F5FF',
+              100: '#E1ECFE',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              700: '#1E40AF',
+            }
+          },
+          boxShadow: {
+            'subtle': '0 2px 10px rgba(0, 0, 0, 0.03)',
+            'card': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Component Styles -->
+<style data-purpose="custom-typography-and-effects">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #E2E8F0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-[#F4F7FB] text-[#334155] min-h-screen flex flex-col antialiased">
+<!-- BEGIN: TopNavigationBar -->
+<header class="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-sm" data-purpose="top-global-header">
+<div class="max-w-[1560px] mx-auto px-6 h-16 flex items-center justify-between">
+<!-- Brand Logo & Platform Title -->
+<div class="flex items-center space-x-8">
+<a class="flex items-center space-x-3 group" href="#" title="夸克医药 Quarkmed">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24">
+<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+</svg>
+</div>
+<div>
+<div class="flex items-center space-x-1.5">
+<span class="font-extrabold text-lg tracking-tight text-slate-800">Quarkmed</span>
+<span class="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-50 text-blue-600 border border-blue-100">夸克医药</span>
+</div>
+<p class="text-[11px] text-slate-400 leading-none tracking-wide">PPT方案智造平台</p>
+</div>
+</a>
+<!-- Main Navigation Links -->
+<nav class="hidden lg:flex items-center space-x-1" data-purpose="main-menu-navigation">
+<a class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors" href="#">首页</a>
+<a class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors" href="#">PPT模板库</a>
+<a class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors" href="#">项目方案管理</a>
+<!-- Active Menu Item: 模板分类 -->
+<a aria-current="page" class="px-3.5 py-2 rounded-lg text-sm font-medium text-blue-600 bg-blue-50/80 font-semibold border border-blue-100/60 shadow-sm" href="#">模板分类</a>
+<!-- Action Wizard Shortcut -->
+<a class="ml-2 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all hover:shadow-blue-500/25" href="#">
+<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+            新建项目向导
+          </a>
+</nav>
+</div>
+<!-- Right Utility Section: Search & Admin Profile -->
+<div class="flex items-center space-x-4">
+<!-- Quick Search Bar -->
+<div class="relative w-64 xl:w-72 hidden md:block">
+<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</span>
+<input class="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400" placeholder="搜索临床试验模板、方案课件..." type="search">
+</div>
+<div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+<!-- Admin Profile Pill -->
+<div class="flex items-center space-x-3 bg-slate-50/80 hover:bg-slate-100 p-1.5 pr-3 rounded-full border border-slate-200/80 cursor-pointer transition-colors" data-purpose="user-profile-badge">
+<div class="w-7 h-7 rounded-full bg-blue-600 text-white font-medium text-xs flex items-center justify-center ring-2 ring-white">
+            管
+          </div>
+<div class="text-left leading-tight hidden sm:block">
+<span class="text-xs font-semibold text-slate-800">管理员</span>
+<span class="text-[11px] text-slate-400 block font-normal">研发医学部</span>
+</div>
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+</header>
+<!-- END: TopNavigationBar -->
+<!-- Main Container -->
+<main class="flex-1 max-w-[1560px] w-full mx-auto px-6 py-6 space-y-5" data-purpose="main-content-layout">
+<!-- BEGIN: HeaderBanner -->
+<section class="relative overflow-hidden bg-gradient-to-r from-[#EBF3FE] via-[#EDF5FF] to-[#F3F8FF] rounded-2xl p-7 border border-[#D9E6FC] shadow-sm" data-purpose="page-hero-banner">
+<div class="flex items-center justify-between relative z-10">
+<!-- Title and Icon Badge -->
+<div class="flex items-center space-x-5">
+<div class="w-14 h-14 rounded-2xl bg-white shadow-md shadow-blue-500/10 flex items-center justify-center border border-blue-100/80 text-blue-600">
+<!-- 4-grid square category icon -->
+<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+<rect height="7" rx="2" stroke-linecap="round" stroke-linejoin="round" width="7" x="3" y="3"></rect>
+<rect height="7" rx="2" stroke-linecap="round" stroke-linejoin="round" width="7" x="14" y="3"></rect>
+<rect height="7" rx="2" stroke-linecap="round" stroke-linejoin="round" width="7" x="14" y="14"></rect>
+<rect height="7" rx="2" stroke-linecap="round" stroke-linejoin="round" width="7" x="3" y="14"></rect>
+</svg>
+</div>
+<div>
+<h1 class="text-2xl font-bold text-slate-900 tracking-tight">模板分类维护</h1>
+<p class="text-sm text-slate-500 mt-1.5 font-normal">轻量维护系统PPT模板的一级分类名称及管理，配置后可在各业务端自动生效。</p>
+</div>
+</div>
+<!-- 3D presentation slide decorative badge -->
+<div class="hidden md:flex items-center pr-6" data-purpose="banner-graphic-illustration">
+<div class="relative w-28 h-20">
+<!-- Back tilted slide layer -->
+<div class="absolute inset-0 bg-blue-100/70 rounded-xl transform -rotate-6 translate-x-2 translate-y-1 backdrop-blur-xs border border-blue-200/50"></div>
+<!-- Front presentation slide icon with P badge -->
+<div class="absolute inset-0 bg-gradient-to-br from-white/90 to-blue-50/80 rounded-xl shadow-lg border border-white flex items-end justify-end p-2.5">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-500 to-sky-400 text-white font-extrabold flex items-center justify-center text-lg shadow-md shadow-blue-400/40">
+                P
+              </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Subtle decorative background ring -->
+<div class="absolute -right-16 -top-16 w-64 h-64 bg-blue-200/30 rounded-full blur-2xl pointer-events-none"></div>
+</section>
+<!-- END: HeaderBanner -->
+<!-- BEGIN: QuickCreationCard -->
+<section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-subtle flex flex-col md:flex-row items-center justify-between gap-4" data-purpose="quick-add-category-toolbar">
+<!-- Info Left -->
+<div class="flex items-center space-x-3 w-full md:w-auto">
+<div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<h2 class="text-sm font-bold text-slate-800">模板分类维护</h2>
+<p class="text-xs text-slate-400 font-normal">轻量维护系统PPT模板的一级分类名称及管理</p>
+</div>
+</div>
+<!-- Add Category Input & Button -->
+<div class="flex items-center space-x-3 w-full md:w-auto justify-end">
+<div class="w-full md:w-80">
+<input class="w-full px-4 py-2 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-slate-400 transition-all" placeholder="输入新分类名称，如：临床研究" type="text">
+</div>
+<button class="shrink-0 inline-flex items-center px-5 py-2 rounded-xl text-xs font-semibold bg-[#0066FF] hover:bg-blue-600 text-white shadow-md shadow-blue-600/20 transition-all hover:scale-[1.01] active:scale-[0.99]" type="button">
+<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+          新增分类
+        </button>
+</div>
+</section>
+<!-- END: QuickCreationCard -->
+<!-- BEGIN: CategoryTableCard -->
+<section class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle overflow-hidden" data-purpose="category-list-datatable-card">
+<!-- Card Sub-header & Hint -->
+<div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+<div class="flex items-center space-x-2.5">
+<h3 class="text-sm font-bold text-slate-800">已配置分类列表</h3>
+<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100">
+            7 个分类
+          </span>
+</div>
+<div class="flex items-center text-xs text-slate-400 space-x-1">
+<span>提示：分类名称可直接用于PPT模板库的快速筛选与方案归集</span>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse" id="category-management-table">
+<thead>
+<tr class="border-b border-slate-100 text-xs font-medium text-slate-400">
+<th class="py-3.5 pl-8 pr-4 font-normal w-24" scope="col">序号</th>
+<th class="py-3.5 px-6 font-normal w-72" scope="col">模板分类名称</th>
+<th class="py-3.5 px-6 font-normal w-60" scope="col">关联模板数</th>
+<th class="py-3.5 px-6 font-normal w-48" scope="col">状态</th>
+<th class="py-3.5 pr-8 pl-4 font-normal text-right" scope="col">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100/80 text-xs text-slate-600">
+<!-- Row 01 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">01</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+<span class="font-semibold text-slate-800">通用模板</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  32 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 02 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">02</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">汇报演示</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  26 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 03 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">03</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">数据分析</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  18 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 04 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">04</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">方案策划</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  24 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 05 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">05</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">培训课件</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  12 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 06 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">06</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">临床科研</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  10 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+<!-- Row 07 -->
+<tr class="hover:bg-blue-50/30 transition-colors group">
+<td class="py-4 pl-8 pr-4 font-mono text-slate-400">07</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2.5">
+<span class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
+<span class="font-semibold text-slate-800">学术演讲</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-xs">
+                  6 套
+                </span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100/60">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  启用中
+                </span>
+</td>
+<td class="py-4 pr-8 pl-4 text-right space-x-3">
+<button class="text-blue-600 hover:text-blue-800 font-medium transition-colors" type="button">编辑名称</button>
+<button class="text-slate-400 hover:text-rose-500 font-medium transition-colors" type="button">删除</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- END: CategoryTableCard -->
+</main>
+<!-- BEGIN: MainFooter -->
+<footer class="mt-auto border-t border-slate-200/80 bg-white py-5" data-purpose="site-footer">
+<div class="max-w-[1560px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 space-y-2 sm:space-y-0">
+<div class="flex items-center space-x-2">
+<span class="font-semibold text-slate-600">Quarkmed</span>
+<span>© 2025 夸克医药 PPT方案智造平台. 保留所有权利.</span>
+</div>
+<div class="flex items-center space-x-5">
+<a class="hover:text-blue-600 transition-colors" href="#">医药合规声明</a>
+<span class="text-slate-200">|</span>
+<a class="hover:text-blue-600 transition-colors" href="#">模板规范指南</a>
+<span class="text-slate-200">|</span>
+<a class="hover:text-blue-600 transition-colors" href="#">系统使用帮助</a>
+</div>
+</div>
+</footer>
+<!-- END: MainFooter -->
+</body></html>

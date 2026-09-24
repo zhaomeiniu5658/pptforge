@@ -1,0 +1,940 @@
+<!DOCTYPE html><html lang="zh-CN" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>项目方案管理 - Quarkmed 夸克医药</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-typography">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+<meta content="web_standard" name="shell-type">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"></head>
+<body class="bg-[#f4f7fb] text-slate-700 min-h-screen flex flex-col antialiased">
+<!-- BEGIN: MainHeader -->
+<!-- 顶部横向主导航栏，保持与模板库横向版完全统一的设计语言 -->
+<header class="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-sm" data-purpose="top-navigation">
+<div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between gap-6">
+<!-- Brand / Logo -->
+<div class="flex items-center gap-8 shrink-0">
+<a class="flex items-center gap-2.5 group" href="#">
+<div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+<path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.2l6.5 3.6-2.5 1.4-6.5-3.6 2.5-1.4zM5.5 8.5l6.5 3.6v7.3l-6.5-3.6V8.5zm8 10.9v-7.3l6.5-3.6v7.3l-6.5 3.6z"></path>
+</svg>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-lg text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">Quarkmed</span>
+<span class="text-[10px] text-slate-400 tracking-wider font-medium mt-0.5">夸克医药</span>
+</div>
+</a>
+<!-- Horizontal Nav Links -->
+<nav class="flex items-center gap-1.5 text-sm font-medium">
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            首页
+          </a>
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.5L18 8.5V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            PPT模板库
+          </a>
+<!-- Active Nav Item -->
+<a class="px-3.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 font-semibold transition-all flex items-center gap-1.5 shadow-sm shadow-blue-100" href="#">
+<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            项目方案管理
+          </a>
+<a class="px-3.5 py-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all flex items-center gap-1.5" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            模板管理
+          </a>
+
+<a class="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 border border-dashed border-blue-200 rounded-lg hover:border-blue-300 transition-colors ml-1" href="#">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            新建项目向导
+          </a>
+</nav>
+</div>
+<!-- Right Header Actions (Search & User Profile) -->
+<div class="flex items-center gap-4">
+<!-- Quick Search -->
+<div class="relative w-64">
+<input class="w-full bg-slate-100/80 border-0 rounded-full pl-9 pr-4 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" placeholder="搜索模板名称、关键词..." type="text">
+<svg class="w-4 h-4 text-slate-400 absolute left-3 top-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<!-- User Menu -->
+<div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+<div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium text-xs shadow-inner">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-700">管理员</span>
+<svg class="w-3.5 h-3.5 text-slate-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 max-w-[1600px] w-full mx-auto px-6 py-5 space-y-4" data-purpose="page-main-container"><div class="flex flex-col w-full space-y-6">
+<!-- 面包屑导航与页面状态栏 -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/70 backdrop-blur-md px-5 py-3 rounded-xl shadow-sm">
+<div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+<span class="hover:text-blue-600 cursor-pointer transition-colors">项目方案管理</span>
+<svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="hover:text-blue-600 cursor-pointer transition-colors font-mono">QM-2025-0801 创新药临床研究项目方案</span>
+<svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-blue-600 font-semibold">团队成员PPT制作协同</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        云端协作同步中
+      </span>
+<span class="text-xs text-slate-400 font-mono">版本: v2.4 (实时保存 10:42)</span>
+</div>
+</div>
+<!-- 项目核心指标总览卡片 -->
+<div class="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+<div class="absolute -right-10 -top-10 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+<!-- 项目信息左侧 -->
+<div class="flex-1 space-y-3">
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100/70 text-blue-700 font-mono tracking-wide">QM-2025-0801</span>
+<span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700">核药 / 靶向放射配体</span>
+<span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-50 text-sky-700">临床试验 Phase IIa</span>
+<span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-700">IND 获批加速通道</span>
+</div>
+<div>
+<h1 class="text-2xl font-bold text-slate-900 tracking-tight">创新药 177Lu-PR02 临床研究项目方案汇报幻灯组</h1>
+<p class="text-xs text-slate-500 mt-1 flex items-center gap-3">
+<span class="">核心PI / CMO：<strong class="text-slate-700 font-semibold">张立明 博士</strong> (研发医学部·首席医学官)</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="">计划汇报节点：2025年09月15日伦理初审会</span>
+</p>
+</div>
+<!-- 快捷操作栏 -->
+<div class="flex flex-wrap items-center gap-2 pt-1">
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium shadow-sm shadow-blue-500/20 transition-all hover:scale-[1.01]">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            一键合并全套PPT
+          </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            导出母版 (16:9)
+          </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            协同权限设置
+          </button>
+
+</div>
+</div>
+<!-- 项目总体PPT指标雷达与环形进度 -->
+<div class="flex items-center gap-6 bg-slate-50/80 p-4 rounded-xl shrink-0">
+<div class="relative w-20 h-20 flex items-center justify-center">
+<svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+<path class="text-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-blue-600" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="78.5, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-lg font-bold text-slate-800 leading-none">78%</span>
+<span class="text-[9px] text-slate-400 font-medium scale-90">总进度</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 border-l border-slate-200/80 pl-6 text-center">
+<div>
+<div class="text-xl font-bold text-slate-800 font-mono">42</div>
+<div class="text-[11px] text-slate-400">规划总页数</div>
+</div>
+<div>
+<div class="text-xl font-bold text-emerald-600 font-mono">33</div>
+<div class="text-[11px] text-slate-400">已定稿完成</div>
+</div>
+<div>
+<div class="text-xl font-bold text-amber-500 font-mono">9</div>
+<div class="text-[11px] text-slate-400">审核/待交</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 核心交互区：团队成员概览水平快速切换栏 -->
+<div class="bg-white rounded-2xl p-4 shadow-sm">
+<div class="flex items-center justify-between pb-3 border-b border-slate-100">
+<div class="flex items-center gap-2">
+<span class="font-bold text-slate-800 text-sm">项目协同团队成员 (5人)</span>
+<span class="text-xs text-slate-400">点击人员快速定位幻灯片成果与审核模块</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-xs text-blue-600 hover:text-blue-700 font-medium px-2.5 py-1 rounded bg-blue-50/60 transition-colors">
+          查看分工责任矩阵 (RACI)
+        </button>
+</div>
+</div>
+<!-- 成员卡片横向流 -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mt-3">
+<!-- 成员 1: 张立明 -->
+<div class="p-3 rounded-xl bg-blue-50/40 hover:bg-blue-50/70 cursor-pointer transition-all border border-blue-100/60 relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+              立明
+            </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-800">张立明</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">PI/负责人</span>
+</div>
+<p class="text-[10px] text-slate-400 mt-0.5">立项背景 &amp; 摘要</p>
+</div>
+</div>
+<span class="text-[11px] font-mono font-bold text-emerald-600">4/4 页</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full w-full"></div>
+</div>
+</div>
+<!-- 成员 2: 李四 (高负荷核心撰写) -->
+<div class="p-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all border border-transparent hover:border-slate-200 relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+              李四
+            </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-800">李四</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">参与</span>
+</div>
+<p class="text-[10px] text-slate-400 mt-0.5">研究方案 &amp; 终点设计</p>
+</div>
+</div>
+<span class="text-[11px] font-mono font-bold text-blue-600">14/16 页</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-blue-600 h-full rounded-full" style="width: 87.5%"></div>
+</div>
+</div>
+<!-- 成员 3: 王建平 -->
+<div class="p-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all border border-transparent hover:border-slate-200 relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+              建平
+            </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-800">王建平</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 font-semibold">参与</span>
+</div>
+<p class="text-[10px] text-slate-400 mt-0.5">安全监控 &amp; AE预案</p>
+</div>
+</div>
+<span class="text-[11px] font-mono font-bold text-emerald-600">8/8 页</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full w-full"></div>
+</div>
+</div>
+<!-- 成员 4: 赵六 -->
+<div class="p-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all border border-transparent hover:border-slate-200 relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+              赵六
+            </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-800">赵六</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">参与&nbsp;</span>
+</div>
+<p class="text-[10px] text-slate-400 mt-0.5">甘特图 &amp; 质控管理</p>
+</div>
+</div>
+<span class="text-[11px] font-mono font-bold text-amber-600">2/6 页</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-amber-500 h-full rounded-full" style="width: 33%"></div>
+</div>
+</div>
+<!-- 成员 5: 钱七 -->
+<div class="p-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all border border-transparent hover:border-slate-200 relative group">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-sky-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+              钱七
+            </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-slate-800">钱七</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 font-semibold">参与<br></span>
+</div>
+<p class="text-[10px] text-slate-400 mt-0.5">中心选址 &amp; EDC数据</p>
+</div>
+</div>
+<span class="text-[11px] font-mono font-bold text-blue-600">7/8 页</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-blue-500 h-full rounded-full" style="width: 87.5%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- 人员与PPT成果列表容器区 -->
+<div class="space-y-6">
+<!-- 成果区 1: 张立明 (方案核心负责人 / PI) -->
+<div class="bg-white rounded-2xl p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+<div class="flex items-center gap-3.5">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 text-white font-bold text-sm flex items-center justify-center shadow-md shadow-blue-500/20">
+            立明
+          </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-base font-bold text-slate-900">张立明</span>
+<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700">总编审 / PI</span>
+<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700">章节全部就绪</span>
+</div>
+<p class="text-xs text-slate-500 mt-0.5">负责模块：<span class="font-medium text-slate-700">01 封面与立项概述、02 科学机理与靶向机制、03 临床执行摘要</span></p>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-auto">
+<div class="text-right hidden sm:block">
+<div class="text-xs font-semibold text-slate-700">4 页已全部交付</div>
+<div class="text-[10px] text-slate-400">最后更新: 2025-08-28 09:14</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-3 py-1.5 text-xs font-medium rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">
+              在线预览 (4P)
+            </button>
+<button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+              下载分册
+            </button>
+<button class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+</div>
+<!-- 幻灯片缩略图矩阵 -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+<!-- 幻灯 1 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="tracking-wider uppercase font-mono">QUARKMED CLINICAL</span>
+<span class="bg-blue-500/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 01</span>
+</div>
+<div class="my-auto text-center space-y-1">
+<div class="text-[10px] text-blue-400 tracking-widest font-mono uppercase">Phase IIa Protocol</div>
+<div class="text-xs font-bold leading-tight">创新靶向核药 177Lu-PR02<br>临床方案汇报</div>
+</div>
+<div class="flex items-center justify-between text-[8px] text-slate-400">
+<span class="">方案编号: QM-2025-0801</span>
+<span class="">主研人: 张立明</span>
+</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">方案标准首页封面</h4>
+<p class="text-[10px] text-slate-400">模块: 01 封面 | 母版v2.1</p>
+</div>
+<span class="inline-flex items-center text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+              已定稿
+            </span>
+</div>
+</div>
+<!-- 幻灯 2 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-blue-300">01.2 立项背景</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 02</span>
+</div>
+<div class="space-y-1.5 my-auto">
+<div class="text-[10px] font-bold text-slate-200">全球神经内分泌肿瘤流行病学痛点</div>
+<div class="grid grid-cols-2 gap-1 text-[8px] text-slate-300">
+<div class="bg-white/5 p-1 rounded">5年生存率 &lt; 28%</div>
+<div class="bg-white/5 p-1 rounded">PRRT疗法耐药机制</div>
+</div>
+</div>
+<div class="text-[8px] text-slate-400 flex justify-between">
+<span class="">数据源: Globocan 2024</span>
+<span class="text-emerald-400">权威背书</span>
+</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">疾病背景与未满足临床</h4>
+<p class="text-[10px] text-slate-400">模块: 01 背景概述</p>
+</div>
+<span class="inline-flex items-center text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+              已定稿
+            </span>
+</div>
+</div>
+<!-- 幻灯 3 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-cyan-300">01.3 作用机制</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 03</span>
+</div>
+<!-- 示意分子机制图表 -->
+<div class="my-auto flex items-center justify-center gap-2">
+<div class="w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-[8px] text-cyan-300">SSTR</div>
+<div class="w-5 border-t border-dashed border-cyan-400"></div>
+<div class="w-7 h-7 rounded-lg bg-blue-500/30 border border-blue-400 flex items-center justify-center text-[8px] text-blue-200">177Lu</div>
+<div class="w-5 border-t border-dashed border-cyan-400"></div>
+<div class="w-6 h-6 rounded-full bg-red-500/20 border border-red-400 flex items-center justify-center text-[8px] text-red-300">DNA</div>
+</div>
+<div class="text-[8px] text-center text-slate-300">双功能螯合靶向内照射机理模型</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">靶向螯合分子机理示意</h4>
+<p class="text-[10px] text-slate-400">模块: 01 科学假说</p>
+</div>
+<span class="inline-flex items-center text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+              已定稿
+            </span>
+</div>
+</div>
+<!-- 幻灯 4 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-emerald-300">01.4 执行摘要</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 04</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-semibold text-emerald-300">核心临床假设与目标交付物</div>
+<div class="space-y-0.5">
+<div class="text-[8px] text-slate-300 bg-white/5 px-1 py-0.5 rounded">• ORR预计突破 45% (RECIST 1.1)</div>
+<div class="text-[8px] text-slate-300 bg-white/5 px-1 py-0.5 rounded">• 血液学毒性 ≤ 15% 可耐受窗口</div>
+</div>
+</div>
+<div class="text-[8px] text-slate-400">已关联最新 CMC 药代数据</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">临床试验执行摘要卡片</h4>
+<p class="text-[10px] text-slate-400">模块: 01 决策要点</p>
+</div>
+<span class="inline-flex items-center text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+              已定稿
+            </span>
+</div>
+</div>
+</div>
+</div>
+<!-- 成果区 2: 李四 (高级医学撰写员 MW - 主要执笔，体量最大) -->
+<div class="bg-white rounded-2xl p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+<div class="flex items-center gap-3.5">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white font-bold text-sm flex items-center justify-center shadow-md shadow-indigo-500/20">
+            李四
+          </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-base font-bold text-slate-900">李四</span>
+<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700">参与</span>
+
+</div>
+<p class="text-xs text-slate-500 mt-0.5">负责模块：<span class="font-medium text-slate-700">02 试验主要与次要终点、03 入排标准筛选条件、04 给药方案与剂量递增</span></p>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-auto">
+<div class="text-right hidden sm:block">
+<div class="text-xs font-semibold text-slate-700">14 完成 / 共 16 页</div>
+<div class="text-[10px] text-slate-400">最新提交: 15分钟前</div>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-3 py-1.5 text-xs font-medium rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">待提交&nbsp;&nbsp;</button>
+
+</div>
+</div>
+</div>
+<!-- 幻灯片矩阵展示精选 4 页代表，并提供展开全部 -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+<!-- 幻灯 5 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-indigo-300">02.1 研究终点</span>
+<span class="bg-blue-600/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 05</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold">主要终点 Primary Endpoint</div>
+<div class="text-[8px] text-slate-300 bg-indigo-950/60 p-1.5 rounded">无进展生存期 (PFS, IRC独立盲审)</div>
+<div class="text-[8px] text-slate-400">次要: ORR, DCR, OS及生活质量QoL评估</div>
+</div>
+<div class="flex justify-between text-[8px] text-slate-400">
+<span class="">FDA/CDE标准对照</span>
+<span class="text-emerald-400">已定稿</span>
+</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">主要与次要终点架构</h4>
+<p class="text-[10px] text-slate-400">模块: 02 临床指标定义</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 6 (审核中) -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-amber-200/70">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-amber-300">03.2 入选/排除</span>
+<span class="bg-amber-600/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 09</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold text-amber-300">ECOG 0-1 &amp; 肾小球滤过率</span>
+<span class="text-[8px] bg-amber-500/30 text-amber-200 px-1 rounded">待医学官确认</span>
+</div>
+<div class="text-[8px] text-slate-300 bg-white/5 p-1 rounded font-mono">
+                eGFR ≥ 50 mL/min/1.73m² (建议修订)
+              </div>
+</div>
+<div class="flex justify-between text-[8px] text-amber-300">
+<span class="">批注人: 张立明</span>
+<span class="">待处理批注: 2</span>
+</div>
+<div class="absolute inset-0 bg-amber-950/70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="px-2.5 py-1 text-[11px] font-medium rounded bg-amber-500 text-slate-900 shadow hover:bg-amber-400 transition-colors">
+                查看批注差异
+              </button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">入选标准与肾功能阈值</h4>
+<p class="text-[10px] text-slate-400">模块: 03 入组筛选池</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 7 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-cyan-300">04.1 剂量递增设计</span>
+<span class="bg-blue-600/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 12</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold">加速滴定 + 3+3 设计模型</div>
+<!-- 阶梯可视化 -->
+<div class="flex items-end gap-1 h-8 pt-1">
+<div class="w-1/4 h-3 bg-blue-500 rounded-t text-[7px] text-center">3.7GBq</div>
+<div class="w-1/4 h-5 bg-blue-500 rounded-t text-[7px] text-center">5.5GBq</div>
+<div class="w-1/4 h-7 bg-blue-400 rounded-t text-[7px] text-center">7.4GBq</div>
+<div class="w-1/4 h-8 bg-blue-300 rounded-t text-[7px] text-center">9.2GBq</div>
+</div>
+</div>
+<div class="flex justify-between text-[8px] text-slate-400">
+<span class="">DLT评估周期: 28天</span>
+<span class="text-emerald-400">已通过</span>
+</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">剂量梯度与队列递增方案</h4>
+<p class="text-[10px] text-slate-400">模块: 04 给药探索</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 8 (AI辅助生成中) -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-sky-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-sky-300">04.4 给药流程图</span>
+<span class="bg-sky-600/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 16</span>
+</div>
+<div class="my-auto text-center space-y-1">
+<div class="inline-block p-1.5 rounded-full bg-blue-500/20 text-blue-400 animate-spin">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div class="text-[9px] text-slate-300">夸克AI正在排版输注随访图谱...</div>
+</div>
+<div class="flex justify-between text-[8px] text-sky-300">
+<span class="">预计耗时: 10秒</span>
+<span class="">AI Agent生成</span>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">静脉滴注与患者观察周期</h4>
+<p class="text-[10px] text-slate-400">模块: 04 给药流程</p>
+</div>
+
+</div>
+</div>
+</div>
+<!-- 展开更多条目提示 -->
+<div class="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+<span class="text-xs text-slate-400">当前已显示李四负责的 4/16 页核心幻灯片</span>
+<button class="text-xs text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1">
+          展开此人员全部 16 页幻灯片
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- 成果区 3: 王建平 (临床评估专家，医学初审与安全性) -->
+<div class="bg-white rounded-2xl p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+<div class="flex items-center gap-3.5">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-teal-600 to-teal-400 text-white font-bold text-sm flex items-center justify-center shadow-md shadow-teal-500/20">
+            建平
+          </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-base font-bold text-slate-900">王建平</span>
+<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-teal-50 text-teal-700">参与</span>
+
+</div>
+<p class="text-xs text-slate-500 mt-0.5">负责模块：<span class="font-medium text-slate-700">05 安全性监控指标、06 AE/SAE 紧急上报与救治标准、07 辐射防护随访</span></p>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end md:self-auto">
+<div class="text-right hidden sm:block">
+
+
+</div>
+<div class="flex items-center gap-1.5">
+
+<button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+              已提交&nbsp;</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+<!-- 幻灯 9 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-teal-300">05.1 不良反应监控</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 21</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold text-teal-200">CTCAE 5.0 毒副分级应对</div>
+<div class="text-[8px] text-slate-300 bg-white/5 p-1 rounded">
+                骨髓抑制监控：中性粒细胞绝对值 &lt; 1.0×10⁹/L
+              </div>
+</div>
+<div class="text-[8px] text-slate-400">匹配最新NMPA规范</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">血液学毒性预警与分级</h4>
+<p class="text-[10px] text-slate-400">模块: 05 安全性矩阵</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 10 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-teal-300">06.1 SAE急救</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 24</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold text-rose-300">SAE 24小时报送全链路</div>
+<div class="flex items-center gap-1 text-[7px] text-slate-300">
+<span class="bg-rose-950 p-1 rounded">临床中心发现</span>
+<span class="">→</span>
+<span class="bg-slate-800 p-1 rounded">主研PI初判</span>
+<span class="">→</span>
+<span class="bg-slate-800 p-1 rounded">申办方盲审</span>
+</div>
+</div>
+<div class="text-[8px] text-slate-400">已通过临床质控部签字</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">严重不良事件紧急响应流</h4>
+<p class="text-[10px] text-slate-400">模块: 06 救治机制</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 11 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-teal-300">07.1 辐射安全</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 27</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold text-teal-200">病区辐射剂量与隔离标准</div>
+<div class="text-[8px] text-slate-300 bg-white/5 p-1 rounded font-mono">
+                出院阈值: 距离1米处 &lt; 20 μSv/h
+              </div>
+</div>
+<div class="text-[8px] text-slate-400">核安全环保局合规标准</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">辐射防护与出院隔离指引</h4>
+<p class="text-[10px] text-slate-400">模块: 07 院感安全</p>
+</div>
+
+</div>
+</div>
+<!-- 幻灯 12 -->
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2.5 transition-all shadow-sm hover:shadow-md border border-slate-100">
+<div class="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 relative shadow-inner flex flex-col justify-between p-3 text-white">
+<div class="flex items-center justify-between text-[10px] opacity-75">
+<span class="font-mono text-teal-300">07.2 随访计划</span>
+<span class="bg-slate-700/80 px-1.5 py-0.5 rounded text-[9px]">SLIDE 28</span>
+</div>
+<div class="my-auto space-y-1">
+<div class="text-[10px] font-bold">长期生存与远期骨髓随访</div>
+<div class="text-[8px] text-slate-300 bg-white/5 p-1 rounded">
+                用药后第 3/6/12/24 个月回访
+              </div>
+</div>
+<div class="text-[8px] text-slate-400">随访手册已生成附件</div>
+<div class="absolute inset-0 bg-blue-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 backdrop-blur-[2px] transition-opacity">
+<button class="p-2 rounded-full bg-white text-slate-900 shadow hover:scale-110 transition-transform">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between">
+<div>
+<h4 class="text-xs font-bold text-slate-800">远期安全性随访时间轴</h4>
+<p class="text-[10px] text-slate-400">模块: 07 随访随查</p>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<!-- 成果区 4: 赵六 & 钱七 联合并列卡片 (PM进度监查 & CRA数据中心) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- 赵六 (PM) -->
+<div class="bg-white rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-4 border-b border-slate-100">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-amber-500/20">
+                赵六
+              </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-slate-900">赵六</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700">参与</span>
+</div>
+<p class="text-[11px] text-slate-500 mt-0.5">负责模块：甘特图与关键里程碑、质控稽查</p>
+</div>
+</div>
+<span class="text-xs font-mono font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded">2 / 6 页进行中</span>
+</div>
+<!-- 缩略图横排展示 -->
+<div class="grid grid-cols-2 gap-3 mt-4">
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2 transition-all border border-slate-100">
+<div class="aspect-video w-full rounded-lg bg-slate-900 p-2 text-white flex flex-col justify-between text-[8px]">
+<div class="flex justify-between font-mono text-amber-300">
+<span class="">08.1 甘特图</span>
+<span class="">SLIDE 29</span>
+</div>
+<div class="space-y-1 my-auto">
+<div class="w-full bg-white/10 h-1.5 rounded">
+<div class="bg-amber-400 h-1.5 rounded w-3/4"></div>
+</div>
+<div class="w-full bg-white/10 h-1.5 rounded">
+<div class="bg-emerald-400 h-1.5 rounded w-1/2"></div>
+</div>
+</div>
+<span class="text-slate-400">里程碑已匹配首例入组(FPI)</span>
+</div>
+<div class="mt-2">
+<div class="text-xs font-bold text-slate-800">试验执行甘特总图</div>
+<span class="text-[10px] text-emerald-600">已定稿</span>
+</div>
+</div>
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2 transition-all border border-dashed border-amber-300">
+<div class="aspect-video w-full rounded-lg bg-amber-50/50 p-2 text-amber-800 flex flex-col justify-center items-center text-center">
+<svg class="w-6 h-6 text-amber-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<div class="text-[11px] font-bold">SLIDE 30-34 制作中</div>
+<div class="text-[9px] text-amber-600">质控与独立稽查委员会章程</div>
+</div>
+<div class="mt-2 flex items-center justify-between">
+<span class="text-xs font-bold text-slate-800">质控要点与稽查</span>
+<span class="text-[10px] text-amber-600 bg-amber-50 px-1 rounded">正在起草</span>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-400">要求交付时间: 8月30日 18:00</span>
+<button class="px-2.5 py-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg font-medium transition-colors">
+            一键催办剩余4页
+          </button>
+</div>
+</div>
+<!-- 钱七 (CRA) -->
+<div class="bg-white rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-4 border-b border-slate-100">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center justify-center shadow-md shadow-sky-500/20">
+                钱七
+              </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-slate-900">钱七</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700">参与</span>
+</div>
+<p class="text-[11px] text-slate-500 mt-0.5">负责模块：中心筛选、EDC数据录入与监查标准</p>
+</div>
+</div>
+<span class="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">7 / 8 页进行中</span>
+</div>
+<!-- 缩略图横排展示 -->
+<div class="grid grid-cols-2 gap-3 mt-4">
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2 transition-all border border-slate-100">
+<div class="aspect-video w-full rounded-lg bg-slate-900 p-2 text-white flex flex-col justify-between text-[8px]">
+<div class="flex justify-between font-mono text-sky-300">
+<span class="">09.1 中心遴选</span>
+<span class="">SLIDE 35</span>
+</div>
+<div class="my-auto space-y-0.5">
+<div class="text-[9px] font-bold">12家全国核医学顶尖PI中心</div>
+<div class="text-slate-300">协和、复旦肿瘤、中山大学附肿...</div>
+</div>
+<span class="text-slate-400">已获得伦理意向书</span>
+</div>
+<div class="mt-2">
+<div class="text-xs font-bold text-slate-800">参研中心分级矩阵</div>
+<span class="text-[10px] text-emerald-600">已定稿</span>
+</div>
+</div>
+<div class="group bg-slate-50 hover:bg-white rounded-xl p-2 transition-all border border-slate-100">
+<div class="aspect-video w-full rounded-lg bg-slate-900 p-2 text-white flex flex-col justify-between text-[8px]">
+<div class="flex justify-between font-mono text-sky-300">
+<span class="">10.1 数据管理</span>
+<span class="">SLIDE 39</span>
+</div>
+<div class="my-auto space-y-0.5">
+<div class="text-[9px] font-bold">EDC系统 eCRF 填报指南</div>
+<div class="text-slate-300">21 CFR Part 11 合规电子签名</div>
+</div>
+<span class="text-slate-400">监查SOP已嵌入</span>
+</div>
+<div class="mt-2">
+<div class="text-xs font-bold text-slate-800">EDC数据与盲审策略</div>
+<span class="text-[10px] text-emerald-600">已定稿</span>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-400">仅余尾页致谢与参研名单待核准</span>
+<button class="px-2.5 py-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-colors">
+            在线核对中心清单
+          </button>
+</div>
+</div>
+</div>
+</div>
+<!-- 底部固定/悬浮式批量协作操作面板 (Batch Action Bar) -->
+<div class="sticky bottom-4 z-40 bg-slate-900/90 backdrop-blur-md text-white rounded-2xl p-4 shadow-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3 w-full md:w-auto">
+<div class="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-400 flex items-center justify-center text-blue-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="text-xs font-bold flex items-center gap-2">
+<span class="">当前已汇总 4 位成员已定稿的 33 页标准幻灯片</span>
+<span class="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 text-[10px] rounded border border-emerald-400/30">就绪率 78.5%</span>
+</div>
+<p class="text-[10px] text-slate-400">包含完整的科学机理、终点定义、剂量滴定及临床安全性规范，符合伦理汇报基线</p>
+</div>
+</div>
+<div class="flex items-center gap-2.5 shrink-0 w-full md:w-auto justify-end">
+
+<button class="px-3.5 py-2 rounded-xl text-xs font-medium bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors">
+        批量提醒未交章节 (9页)
+      </button>
+<button class="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+        生成最新项目合订版 PPT (.pptx)
+      </button>
+</div>
+</div>
+</div></main>
+<!-- END: MainContent -->
+
+
+
+
+</body></html>
