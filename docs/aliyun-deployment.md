@@ -1,29 +1,20 @@
-# 阿里云部署
+# 阿里云 ECS 部署
 
-当前项目最适合部署在一台阿里云 ECS 上，使用阿里云 RDS PostgreSQL 保存业务数据：
+本文是 PPTForge 在阿里云 ECS 上的可执行部署方案。当前方案使用 ECS 内的 PostgreSQL 和 Valkey，数据不依赖 RDS。
 
 ```text
-浏览器 → ECS web (Nginx:80) → ECS api (仅 Compose 内网)
-                                      ├─ RDS PostgreSQL（私网）
-                                      ├─ ECS Valkey（仅 Compose 内网）
-                                      └─ ECS Chromium 工具（仅 Compose 内网）
+浏览器 → ECS:18080 → web(Nginx) → api/worker/tools
+                              ├─ db(PostgreSQL，仅 Compose 网络)
+                              └─ queue(Valkey，仅 Compose 网络)
 ```
 
-ECS 上不需要安装 Node 或 Python，只需要 Docker Engine 和 Compose plugin。上传文件保存到 Docker volume；数据库和文件需要分别备份。
+当前示例服务器使用项目目录 `/opt/pptforge`，公网访问地址为 `http://101.200.145.196:18080`。生产环境建议绑定域名并启用 HTTPS。
 
-## 1. 准备阿里云资源
+## 1. 准备 ECS
 
-建议先准备：
+建议 Ubuntu ARM64，至少 4 vCPU / 16 GiB。安全组入方向放行 TCP 22（限制为办公 IP）和 TCP 18080（网站访问）。不要暴露 PostgreSQL、Valkey、API 或工具端口。
 
-1. ECS：Ubuntu 24.04 LTS 或 Alibaba Cloud Linux 3，至少 4 vCPU / 8 GiB；生成 PPTX、截图和 AI 任务较多时使用 8 vCPU / 16 GiB。
-2. RDS PostgreSQL：版本 16，创建数据库 `quarkmed` 和应用账号；把 ECS 的安全组私网地址加入 RDS 白名单。RDS 默认 PostgreSQL 端口通常为 `1921`，以控制台实际端口为准。
-3. 一个域名（推荐）和 HTTPS 证书。证书可以绑定到阿里云 ALB/证书服务；也可以先用 ECS 公网 IP 验证 HTTP，再切 HTTPS。
-
-ECS 安全组只放行 `22`（建议限制为办公出口 IP）、`80` 和 `443`。不要放行 `8011`、`8012`、`6379` 或 PostgreSQL 端口到公网。
-
-## 2. 安装 Docker 并取得代码
-
-以 ECS 的普通部署用户执行：
+安装 Docker，重新登录后继续：
 
 ```bash
 sudo apt-get update
@@ -31,99 +22,181 @@ sudo apt-get install -y ca-certificates curl git
 curl -fsSL https://get.docker.com | sh
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
-# 重新登录一次，使 docker 用户组生效
-git clone <你的代码仓库地址> /opt/quarkmed
-cd /opt/quarkmed
 ```
 
-如果代码仓库尚未推送，可以在本地打包后通过 SCP 上传；不要上传本地 `.env`、`data/` 或 `artifacts/`。
-
-## 3. 配置 RDS 和应用密钥
+## 2. 获取代码
 
 ```bash
+sudo git clone https://github.com/zhaomeiniu5658/pptforge.git /opt/pptforge
+sudo chown -R "$USER":"$USER" /opt/pptforge
+cd /opt/pptforge
+```
+
+已有目录更新：
+
+```bash
+cd /opt/pptforge
+git pull --ff-only origin main
+```
+
+必须使用这三个 Compose 文件：`compose.yaml`、`compose.aliyun.yaml`、`compose.aliyun.local.yaml`。
+
+## 3. 配置 .env
+
+```bash
+cd /opt/pptforge
 cp deploy/aliyun.env.example .env
 chmod 600 .env
 nano .env
 ```
 
-至少替换 `PGHOST`、`PGPORT`、`PGDATABASE`、`PGUSER`、`PGPASSWORD`、`TOOL_SECRET`、`WEB_ORIGIN` 和 `BOOTSTRAP_ADMIN_PASSWORD`。`PGHOST` 应填写 RDS 私网地址；`WEB_ORIGIN` 填用户最终访问的完整地址，例如 `https://ppt.example.com`。
+ECS 内置数据库配置至少应包含：
 
-`DOCKER_PGHOST=${PGHOST}` 和 `DOCKER_PGPORT=${PGPORT}` 是给 Compose 传入 API/Worker 的数据库地址。若密码包含 `#`、`$` 或空格，按 Compose `.env` 语法正确引用，或使用只含字母、数字和符号的随机密码。
-
-全新部署保留示例中的 `DATABASE_SCHEMA=quarkmed`。如果要迁移当前本地环境，当前数据在 `public` schema 中，先把 `DATABASE_SCHEMA` 改成 `public`，这样数据库 dump 和应用会使用同一 schema；不要让 API 在导入旧数据前运行迁移。
-
-## 4. 迁移本地数据
-
-本地已生成迁移包，目录名类似 `backups/aliyun-migration-20260923-173711/`，其中包含 `database-public.dump` 和 `assets.tar.gz`。将整个目录上传到 ECS，再在目标 RDS 上执行：
-
-```bash
-sha256sum -c SHA256SUMS
-pg_restore --list database-public.dump | head
+```env
+PGHOST=db
+PGPORT=5432
+PGDATABASE=quarkmed
+PGUSER=quark
+PGPASSWORD='替换为数据库密码'
+PGSSLMODE=disable
+DATABASE_SCHEMA=public
+DOCKER_PGHOST=db
+DOCKER_PGPORT=5432
+BROKER_URL=redis://queue:6379/0
+TOOL_URL=http://tools:8012
+STORAGE_ROOT=/data/assets
+TOOL_SECRET=替换为随机密钥
+WEB_ORIGIN=http://101.200.145.196:18080
+COOKIE_SECURE=false
+WEB_BIND_PORT=18080
+BOOTSTRAP_ADMIN_PASSWORD='替换为初始管理员密码'
+SEED_DEMO=false
+MODEL_ENCRYPTION_KEY=替换为随机密钥
+MODEL_SUPPORTS_IMAGES=false
+MODEL_PROVIDER=
+MODEL_BASE_URL=
+MODEL_NAME=
+MODEL_API_KEY=
+CALQUE_ENABLED=false
+IMPORT_RESOURCE_PROXY=
+LOCAL_POSTGRES_PASSWORD='与 PGPASSWORD 相同'
 ```
 
-先在 RDS 控制台创建空数据库和应用账号，并确认账号拥有 `public` schema 的创建、使用和 DDL/DML 权限。停掉 ECS 上的 API/Worker 后，由 DBA 在目标数据库执行：
+生成随机密钥：`openssl rand -hex 32`。变量名不要写反斜杠，例如使用 `DATABASE_SCHEMA`。不要提交 `.env`。
 
-```bash
-pg_restore --no-owner --no-privileges --dbname="$DATABASE_URL" database-public.dump
+## 4. 恢复现有数据
+
+上传到以下准确路径，文件名不能改：
+
+```text
+/opt/pptforge/migration/quarkmed-database-public.dump
+/opt/pptforge/migration/quarkmed-assets.tar.gz
 ```
 
-恢复文件到 ECS 的 assets volume：
+启动数据库和队列：
 
 ```bash
-docker run --rm -v quarkmed_assets:/data -v "$PWD":/backup alpine \
-  sh -c 'rm -rf /data/assets && tar -xzf /backup/assets.tar.gz -C /data'
+cd /opt/pptforge
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile local-db up -d db queue
 ```
 
-确认 `.env` 中 `STORAGE_ROOT=/data/assets`、`DATABASE_SCHEMA=public`，再启动 API/Worker；登录、项目数量、页面和附件抽查无误后，再启动 web。迁移完成后把备份目录复制到 OSS，并保留 SHA256 校验文件。
-
-## 5. 首次启动
+删除空数据库默认 schema：
 
 ```bash
-./scripts/deploy-aliyun.sh
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml exec -T db psql -U quark -d quarkmed -c "DROP SCHEMA public CASCADE;"
 ```
 
-首次构建会下载 Chromium、LibreOffice 和字体，可能需要数分钟。API 容器会自动执行 Alembic 迁移、创建 `quarkmed` schema，并在用户表为空时创建 `BOOTSTRAP_ADMIN_PASSWORD` 指定的管理员。
-
-检查状态和日志：
+恢复 dump：
 
 ```bash
-docker compose -f compose.yaml -f compose.aliyun.yaml --profile full ps
-docker compose -f compose.yaml -f compose.aliyun.yaml --profile full logs -f api worker tools web
-curl -fsS http://127.0.0.1/api/health
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml exec -T db pg_restore -U quark -d quarkmed --no-owner --no-privileges --exit-on-error < ./migration/quarkmed-database-public.dump
 ```
 
-确认可以登录后，立即从 `.env` 删除 `BOOTSTRAP_ADMIN_PASSWORD`，再执行：
+不要使用 `pg_restore -l`、`/tmp/quarkmed.list` 或 `--use-list`。
+
+恢复资产：
 
 ```bash
-docker compose -f compose.yaml -f compose.aliyun.yaml --profile full up -d api worker
+docker run --rm -v pptforge_assets:/data -v /opt/pptforge/migration:/backup:ro alpine sh -c 'mkdir -p /data/assets && tar -xzf /backup/quarkmed-assets.tar.gz -C /data'
 ```
 
-## 6. 域名和 HTTPS
+## 5. 修复依赖和端口
 
-把域名 A 记录指向 ECS 公网 IP。生产环境建议把 ECS 的 `80/443` 接入阿里云 ALB，在 ALB 上绑定证书并把 HTTP 重定向到 HTTPS；ALB 后端指向 ECS 的 80 端口。若直接在 ECS 上终止 TLS，可把 `deploy/nginx.conf` 扩展为证书配置，并把证书目录只读挂载到 `web`，同时保留 `.env` 中的 `COOKIE_SECURE=true`。
-
-HTTPS 生效后，访问 `https://你的域名/`；健康接口为 `https://你的域名/api/health`。前端通过同源 `/api` 访问 API，不需要额外的跨域代理。
-
-## 7. 更新、备份和恢复
-
-更新代码后：
+当前 lock 文件与 package.json 不同步，原始 `npm ci` 会因缺少 sharp 条目失败。部署前执行：
 
 ```bash
-git pull
-./scripts/deploy-aliyun.sh
+cd /opt/pptforge
+cp deploy/tools.Dockerfile deploy/tools.Dockerfile.bak
+sed -i 's/npm ci && npm run build -w third_party\/calque/npm install --no-audit --no-fund --legacy-peer-deps \&\& npm run build -w third_party\/calque/' deploy/tools.Dockerfile
+cp deploy/web.Dockerfile deploy/web.Dockerfile.bak
+sed -i 's/npm ci && npm run build -w apps\/web/npm install --no-audit --no-fund --legacy-peer-deps \&\& npm run build -w apps\/web/' deploy/web.Dockerfile
 ```
 
-备份会同时保存 RDS schema 和 ECS 文件卷：
+如果 `5174` 已被其他项目占用：
 
 ```bash
-./scripts/backup.sh backups/$(date +%Y%m%d-%H%M%S)
+cp compose.yaml compose.yaml.bak
+sed -i 's/"5174:80"/"18080:80"/' compose.yaml
 ```
 
-备份目录应复制到 OSS 或其它独立存储，不能只留在 ECS。RDS 也应开启自动备份和按需快照。恢复前停掉 API/Worker，按 `docs/implementation/operations.md` 的说明恢复数据库 schema 和 `assets.tar.gz`，再启动服务。
+## 6. 后台构建
 
-## 8. 常见检查
+后台构建可避免 ECS Workbench 断开导致任务停止：
 
-- RDS 连接失败：检查 ECS 与 RDS 是否在同一 VPC、RDS 白名单是否包含 ECS 私网地址、端口是否为控制台实际端口。
-- 登录后反复掉线：确认访问地址是 HTTPS，且 `WEB_ORIGIN` 与浏览器地址完全一致；HTTPS 必须保持 `COOKIE_SECURE=true`。
-- AI 任务卡住：检查 `worker`、`tools` 日志，以及模型配置的 Base URL 和密钥；Valkey 不需要暴露公网。
-- 上传或 PPTX 导入失败：检查 ECS 磁盘空间和 `assets` volume；Nginx 已将单次上传限制设为 35 MB。
+```bash
+nohup docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml build --progress=plain tools > /tmp/pptforge-tools-build.log 2>&1 &
+tail -n 40 /tmp/pptforge-tools-build.log
+```
+
+工具日志出现 `exporting to image` 后：
+
+```bash
+nohup docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile full build --progress=plain api worker web > /tmp/pptforge-rest-build.log 2>&1 &
+tail -n 40 /tmp/pptforge-rest-build.log
+```
+
+断线后检查，不要重复启动：
+
+```bash
+ps aux | grep '[d]ocker compose'
+tail -n 40 /tmp/pptforge-rest-build.log
+```
+
+## 7. 启动和验证
+
+```bash
+cd /opt/pptforge
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile local-db --profile full up -d
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile local-db --profile full ps
+curl -I http://127.0.0.1:18080
+curl http://127.0.0.1:18080/api/health
+```
+
+应包含 `db`、`queue`、`tools`、`api`、`worker`、`web`。浏览器访问 `http://101.200.145.196:18080`。本机返回 200 但外网打不开时，检查安全组 TCP 18080。
+
+## 8. 后续更新
+
+普通代码更新不需要重新导入数据库或资产：
+
+```bash
+cd /opt/pptforge
+git pull --ff-only origin main
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile full build api worker web tools
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile local-db --profile full up -d
+```
+
+只改前端可构建 `web`，只改后端可构建 `api worker`。修改 `.env` 后重新 `up -d`。不要执行 `docker compose down -v`，否则可能删除数据库和资产卷。数据库结构变化后查看 API 的 Alembic 日志。
+
+## 9. 常见排错
+
+```bash
+docker compose -p pptforge -f compose.yaml -f compose.aliyun.yaml -f compose.aliyun.local.yaml --profile local-db --profile full ps
+docker logs --tail 100 pptforge-api-1
+docker logs --tail 100 pptforge-worker-1
+docker logs --tail 100 pptforge-tools-1
+docker logs --tail 100 pptforge-web-1
+ss -ltnp | grep ':18080\|:5174'
+docker ps --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
+```
+
+`tools` 不健康时重点看 Chromium 和工具日志；API 不健康时检查数据库、`.env` 和 Alembic；上传失败时检查磁盘和 `pptforge_assets` 卷。初始管理员密码登录成功后立即修改，所有密码和模型 API Key 不要提交到 Git。
