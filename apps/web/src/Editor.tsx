@@ -98,7 +98,9 @@ export function Editor() {
   const uploadRef = useRef<HTMLInputElement>(null);
   const channel = useMemo(() => crypto.randomUUID(), [pageId]);
   const page = b?.pages.find((p: any) => p.id === pageId);
-  const canEdit = b?.owner_id === user.id;
+  const canEdit = user.role === "admin" || b?.owner_id === user.id;
+  const actingFor =
+    user.role === "admin" && b?.owner_id && b.owner_id !== user.id;
   const canvasWidth = doc?.layoutMode === "fixed"
     ? Math.max(320, Math.min(Number(doc?.sourceSize?.width) || 1000, 2560))
     : 1360;
@@ -268,6 +270,7 @@ export function Editor() {
             <h2>{b.title}</h2>
           </div>
           <Badge status={b.submission?.status || "draft"} />
+          {actingFor && <Badge>管理员代人制作</Badge>}
         </div>
         <div className="flex">
           <span className={"save-status " + (dirty ? "unsaved" : "")}>
@@ -828,7 +831,12 @@ export function Editor() {
         <div className="flex">
           <span className="status-dot" />
           <span>
-            {canEdit ? "专业内容编写" : "只读预览"} · {remaining(b.deadline)}
+            {actingFor
+              ? "管理员代人制作"
+              : canEdit
+                ? "专业内容编写"
+                : "只读预览"}{" "}
+            · {remaining(b.deadline)}
           </span>
           <span className="muted">
             {b.instructions || "遵循部门专业规范，提交前核对核心医学数据。"}

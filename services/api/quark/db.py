@@ -177,6 +177,25 @@ class TemplateVersion(Row, Base):
     published: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class PptScheme(Row, Base):
+    __tablename__ = "ppt_schemes"
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class PptSchemeItem(Row, Base):
+    __tablename__ = "ppt_scheme_items"
+    __table_args__ = (UniqueConstraint("scheme_id", "position"),)
+    scheme_id: Mapped[str] = mapped_column(ForeignKey("ppt_schemes.id"))
+    template_id: Mapped[str] = mapped_column(ForeignKey("templates.id"))
+    template_version_id: Mapped[str] = mapped_column(String(36))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Asset(Row, Base):
     __tablename__ = "assets"
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"))

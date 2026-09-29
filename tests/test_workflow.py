@@ -2,7 +2,7 @@
 Run with scripts/test.sh. All mutations use an explicitly labelled QA project.
 """
 
-import os, time, uuid, io, zipfile
+import os, time, uuid, io, zipfile, json
 import httpx, pytest
 from sqlalchemy import select
 from quark.db import SessionLocal, Job, Revision, Submission, Page
@@ -138,20 +138,80 @@ def test_role_and_scope_guards(clients, workspace):
         .status_code
         == 403
     )
-    assert (
-        clients["admin"]
-        .post(
-            "/projects",
+    admin = clients["admin"]
+    created = admin.post(
+        "/projects",
+        json={
+            "name": "QA 管理员商务权限 " + uuid.uuid4().hex[:6],
+            "description": "管理员应拥有商务人员的项目管理权限",
+            "field": "医学",
+            "project_type": "管理员权限回归",
+            "bid_date": "2026-10-01",
+            "deadline": "2026-10-01T23:59:59Z",
+            "leader_id": u["writer"]["id"],
+            "leader_phone": "13800000000",
+            "leader_email": "admin-qa@example.com",
+            "assignments": [
+                {
+                    "user_id": u["writer"]["id"],
+                    "title": "管理员权限验证分册",
+                    "instructions": "验证管理员的商务操作权限",
+                    "expected_pages": 1,
+                }
+            ],
+        },
+    )
+    assert created.status_code == 200, created.text
+    admin_project = created.json()
+    admin_booklet = admin_project["booklets"][0]
+    try:
+        assert admin.get("/projects/" + admin_project["id"]).status_code == 200
+        edited = admin.put(
+            "/projects/" + admin_project["id"],
             json={
-                "name": "admin cannot be BD",
-                "deadline": "2027-01-01",
+                "name": admin_project["name"] + " 已编辑",
+                "description": "管理员可编辑任意项目",
+                "project_type": "管理员权限回归已编辑",
+                "bid_date": "2026-10-02",
+                "deadline": "2026-10-02T23:59:59Z",
                 "leader_id": u["writer"]["id"],
-                "assignments": [{"user_id": u["writer"]["id"], "title": "x"}],
+                "leader_phone": "13900000000",
+                "leader_email": "admin-qa-updated@example.com",
             },
         )
-        .status_code
-        == 403
-    )
+        assert edited.status_code == 200, edited.text
+        refreshed = admin.get("/projects/" + admin_project["id"]).json()
+        assert refreshed["name"].endswith("已编辑")
+        assert refreshed["booklets"][0]["deadline"].startswith("2026-10-02")
+
+        reordered = admin.put(
+            "/projects/" + admin_project["id"] + "/booklets",
+            json={
+                "ids": [admin_booklet["id"]],
+                "version": refreshed["version"],
+            },
+        )
+        assert reordered.status_code == 200, reordered.text
+        assert admin.post(
+            "/projects/" + admin_project["id"] + "/remind", json={}
+        ).status_code == 200
+
+        page = clients["writer"].post(
+            "/booklets/" + admin_booklet["id"] + "/pages",
+            json={"title": "管理员导出验证", "document": {"html": "<h1>admin</h1>"}},
+        )
+        assert page.status_code == 200, page.text
+        submission = clients["writer"].post(
+            "/booklets/" + admin_booklet["id"] + "/submissions", json={}
+        )
+        assert submission.status_code == 200, submission.text
+        export = admin.post(
+            "/projects/" + admin_project["id"] + "/exports",
+            json={"format": "html", "draft": False},
+        )
+        assert export.status_code == 202, export.text
+    finally:
+        assert admin.delete("/projects/" + admin_project["id"]).status_code == 200
 
 
 def test_contributors_are_scoped_to_assigned_booklets(clients, workspace):
@@ -694,3 +754,53 @@ def test_template_folder_and_zip_import(clients):
     ], data={'category_id': category['id']})
     assert response.status_code == 422
     assert {j['id'] for j in admin.get('/jobs').json()} == before
+
+
+def test_ppt_scheme_library_composes_template_versions(clients):
+    admin = clients["admin"]
+    templates = [
+        x
+        for x in admin.get("/templates").json()
+        if x["active"] and x["status"] == "published" and x["documents"]
+    ]
+    if len(templates) < 2:
+        pytest.skip("需要至少两个已启用模板验证 PPT 方案组合")
+    template_ids = [templates[0]["id"], templates[1]["id"]]
+    created = admin.post(
+        "/ppt-schemes",
+        json={
+            "name": "QA PPT 方案 " + uuid.uuid4().hex[:6],
+            "description": "由多个单页模板组合",
+            "template_ids": template_ids,
+        },
+    )
+    assert created.status_code == 200, created.text
+    scheme = created.json()
+    try:
+        assert scheme["template_count"] == 2
+        assert [x["template"]["id"] for x in scheme["items"]] == template_ids
+        visible = clients["writer"].get("/ppt-schemes")
+        assert visible.status_code == 200, visible.text
+        assert any(x["id"] == scheme["id"] for x in visible.json())
+
+        updated = admin.patch(
+            "/ppt-schemes/" + scheme["id"],
+            json={
+                "name": scheme["name"] + " 已编辑",
+                "description": "已调整组合顺序",
+                "template_ids": template_ids[::-1],
+            },
+        )
+        assert updated.status_code == 200, updated.text
+        assert [x["template"]["id"] for x in updated.json()["items"]] == template_ids[::-1]
+
+        downloaded = admin.get("/ppt-schemes/" + scheme["id"] + "/download")
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.headers["content-type"].startswith("application/zip")
+        with zipfile.ZipFile(io.BytesIO(downloaded.content)) as archive:
+            assert "manifest.json" in archive.namelist()
+            manifest = json.loads(archive.read("manifest.json"))
+            assert manifest["scheme_id"] == scheme["id"]
+            assert len(manifest["templates"]) == 2
+    finally:
+        assert admin.delete("/ppt-schemes/" + scheme["id"]).status_code == 200

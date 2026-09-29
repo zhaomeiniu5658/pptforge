@@ -54,6 +54,20 @@ def admin(user):
         raise HTTPException(403, "需要管理员权限")
 
 
+def business_or_admin(user, project=None):
+    """Return whether the user has project-manager permissions.
+
+    Administrators inherit the business role for project operations. When a
+    project is supplied, ordinary business users remain scoped to projects
+    they own while administrators can manage any accessible project.
+    """
+    if user.role == "admin":
+        return True
+    return user.role == "business" and (
+        project is None or project.business_id == user.id
+    )
+
+
 def project_access(db, user, pid, write=False):
     p = db.get(Project, pid)
     if not p or p.status == "deleted":
@@ -61,8 +75,8 @@ def project_access(db, user, pid, write=False):
     if user.role == "admin":
         return p
     if write:
-        if user.role != "business" or p.business_id != user.id:
-            raise HTTPException(403, "仅项目商务负责人可执行")
+        if not business_or_admin(user, p):
+            raise HTTPException(403, "仅项目商务负责人或管理员可执行")
     elif (
         p.business_id != user.id
         and p.leader_id != user.id
@@ -79,6 +93,8 @@ def booklet_access(db, user, bid, write=False):
     if not b:
         raise HTTPException(404, "分册不存在")
     project_access(db, user, b.project_id)
+    if user.role == "admin":
+        return b
     # Project membership does not grant a contributor access to another
     # contributor's assigned working pages.
     if user.role == "contributor" and b.owner_id != user.id:

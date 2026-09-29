@@ -442,6 +442,12 @@
   align-items: center;
   gap: 3px;
 }
+.pm-row-actions .pm-design-button {
+  color: #2563eb;
+}
+.pm-row-actions .pm-design-button:hover {
+  color: #1d4ed8;
+}
 .pm-edit-body {
   max-height: min(620px, calc(100vh - 210px));
 }
@@ -449,6 +455,198 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 18px;
+}
+.pm-design-modal {
+  width: min(1120px, calc(100vw - 32px));
+}
+.pm-design-body {
+  display: grid;
+  gap: 16px;
+  max-height: min(690px, calc(100vh - 230px));
+  overflow: auto;
+  padding: 4px 22px 20px;
+}
+.pm-design-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #eff6ff 0%, #f8fafc 100%);
+}
+.pm-design-context > div,
+.pm-design-context > label {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+.pm-design-context strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+.pm-design-context small {
+  color: #94a3b8;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+}
+.pm-design-context select {
+  width: 100%;
+}
+.pm-design-label {
+  color: #64748b;
+  font-size: 11px;
+}
+.pm-design-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.pm-design-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 9px;
+  background: #f1f5f9;
+}
+.pm-design-tabs button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 13px;
+  color: #64748b;
+  background: transparent;
+}
+.pm-design-tabs button.active {
+  color: #1d4ed8;
+  background: #fff;
+  box-shadow: 0 1px 3px #1e3a8a18;
+}
+.pm-design-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 260px;
+}
+.pm-design-search svg {
+  position: absolute;
+  left: 10px;
+  color: #94a3b8;
+}
+.pm-design-search input {
+  width: 100%;
+  padding-left: 30px !important;
+}
+.pm-design-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #94a3b8;
+  font-size: 11px;
+}
+.pm-design-count b {
+  color: #2563eb;
+  font-weight: 500;
+}
+.pm-design-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 170px;
+}
+.pm-design-card {
+  display: grid;
+  grid-template-rows: 142px auto;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.pm-design-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 16px #2563eb14;
+  transform: translateY(-1px);
+}
+.pm-design-card.chosen {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb22;
+}
+.pm-design-card-preview {
+  position: relative;
+  min-height: 142px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+.pm-design-card-preview > div {
+  height: 100%;
+}
+.pm-design-card-preview iframe {
+  pointer-events: none;
+}
+.pm-design-card-preview > svg {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  color: #93c5fd;
+}
+.pm-design-check {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  color: transparent;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pm-design-card.chosen .pm-design-check {
+  border-color: #2563eb;
+  color: #fff;
+  background: #2563eb;
+}
+.pm-design-card-copy {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px 12px;
+}
+.pm-design-card-copy strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pm-design-card-copy span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+@media (max-width: 760px) {
+  .pm-design-context {
+    grid-template-columns: 1fr;
+  }
+  .pm-design-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .pm-design-search {
+    width: 100%;
+  }
+  .pm-design-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .pm-design-grid {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 680px) {
   .pm-edit-grid {

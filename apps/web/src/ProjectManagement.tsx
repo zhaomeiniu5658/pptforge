@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Folder,
   Tag,
@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Palette,
 } from "lucide-react";
 import { Context } from "./App";
 import { api } from "./api";
@@ -85,6 +86,7 @@ function time(v: string) {
 
 export function ProjectManagement() {
   const { user, notify } = useContext(Context);
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -264,7 +266,7 @@ export function ProjectManagement() {
           </div>
         </div>
       </section>
-      <section className="pm-panel" aria-label="项目方案管理">
+      <section className="pm-panel" aria-label="项目管理">
         <div className="pm-categories-row">
           <div className="pm-categories">
             <span className="pm-category-label">
@@ -298,7 +300,7 @@ export function ProjectManagement() {
               <Download size={14} />
               批量导出{selected.length ? ` (${selected.length})` : ""}
             </button>
-            {user.role === "business" && (
+            {(user.role === "business" || user.role === "admin") && (
               <Link className="button primary" to="/projects/new">
                 <Plus size={15} />
                 新建项目
@@ -505,8 +507,9 @@ export function ProjectManagement() {
                     <td>
                       <div className="pm-row-actions">
                         <Link to={"/projects/" + p.id}>查看方案</Link>
-                        {user.role === "business" &&
-                          p.business_id === user.id && (
+                        {(user.role === "admin" ||
+                          (user.role === "business" &&
+                            p.business_id === user.id)) && (
                             <button
                               type="button"
                               className="pm-secondary-link"
@@ -516,6 +519,17 @@ export function ProjectManagement() {
                               编辑
                             </button>
                           )}
+                        {user.role === "admin" && (
+                          <button
+                            type="button"
+                            className="pm-secondary-link pm-design-button"
+                            aria-label={"为项目设计 " + p.name}
+                            onClick={() => navigate("/projects/" + p.id)}
+                          >
+                            <Palette size={12} />
+                            设计
+                          </button>
+                        )}
                         {user.role === "contributor" &&
                           p.booklets.find((b) => b.owner_id === user.id) && (
                             <Link
@@ -536,8 +550,9 @@ export function ProjectManagement() {
                         >
                           导出
                         </button>
-                        {user.role === "business" &&
-                          p.business_id === user.id && (
+                        {(user.role === "admin" ||
+                          (user.role === "business" &&
+                            p.business_id === user.id)) && (
                             <button
                               type="button"
                               className="pm-delete-button"

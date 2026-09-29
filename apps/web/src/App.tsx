@@ -53,6 +53,7 @@ import { ProjectManagement } from "./ProjectManagement";
 import { TemplateImportDialog } from "./TemplateImportDialog";
 import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
 import { TemplateContentEditor } from "./TemplateContentEditor";
+import { PptSchemeLibrary } from "./PptSchemeLibrary";
 import "./style.css";
 export const Context = React.createContext<any>(null);
 function Login({ onLogin }: any) {
@@ -200,15 +201,17 @@ function Shell() {
               ? [
                   ["/", "资产工作台"],
                   ["/templates", "PPT 模板库"],
-                  ["/projects", "项目方案管理"],
+                  ["/ppt-schemes", "PPT 方案库"],
+                  ["/projects", "项目管理"],
                   ["/categories", "模板分类"],
                   ["/people", "组织与人员"],
                   ...(settings.ai_enabled ? [["/models", "模型配置"]] : []),
                 ]
               : [
                   ["/", "我的工作台"],
-                  ["/projects", "项目方案管理"],
+                  ["/projects", "项目管理"],
                   ["/templates", "部门模板库"],
+                  ["/ppt-schemes", "PPT 方案库"],
                 ]
             ).map(([url, label]) => (
               <Link
@@ -273,6 +276,7 @@ function Shell() {
           <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/booklets/:id" element={<Editor />} />
           <Route path="/templates" element={<Templates />} />
+          <Route path="/ppt-schemes" element={<PptSchemeLibrary />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/people" element={<People />} />
           <Route
@@ -434,7 +438,7 @@ function Dashboard() {
             : "聚焦专业内容，让团队协作更高效。"
         }
       >
-        {user.role === "business" && (
+        {(user.role === "business" || user.role === "admin") && (
           <Link className="button primary" to="/projects/new">
             <Plus size={18} />
             新建项目方案
@@ -626,10 +630,10 @@ function Wizard() {
     leader_email: "",
     assignments: [],
   });
-  if (user.role !== "business")
+  if (user.role !== "business" && user.role !== "admin")
     return (
       <main className="main">
-        <Empty>请使用商务账号立项</Empty>
+        <Empty>请使用商务或管理员账号立项</Empty>
       </main>
     );
   function change(k: string, v: any) {
@@ -945,7 +949,9 @@ function ProjectDetail() {
   const [review, setReview] = useState<any>(null);
   const [drag, setDrag] = useState("");
   if (!p) return <div className="loading">载入项目…</div>;
-  const manager = user.id === p.business_id && user.role === "business";
+  const manager =
+    user.role === "admin" ||
+    (user.role === "business" && user.id === p.business_id);
   async function reorder(from: string, to: string) {
     if (!manager || from === to) return;
     const ids = p.booklets.map((b: any) => b.id);
@@ -964,7 +970,7 @@ function ProjectDetail() {
   return (
     <main className="main">
       <Link to="/projects" className="back">
-        ← 项目方案管理
+        ← 项目管理
       </Link>
       <Heading
         eyebrow={p.code}
@@ -1106,6 +1112,18 @@ function ProjectDetail() {
                       查看确认版本
                     </button>
                   )}
+                  {user.role === "admin" && (
+                    <Link
+                      className="button primary"
+                      to={"/booklets/" + b.id}
+                      aria-label={"制作分册 " + b.title}
+                    >
+                      <Pencil size={15} />
+                      制作
+                      <ArrowUpRight size={15} />
+                    </Link>
+                  )}
+                  {user.role !== "admin" && (
                   <Link
                     className={
                       "button " + (b.owner_id === user.id ? "primary" : "")
@@ -1115,6 +1133,7 @@ function ProjectDetail() {
                     {b.owner_id === user.id ? "继续制作" : "查看草稿"}
                     <ArrowUpRight size={15} />
                   </Link>
+                  )}
                 </div>
               </div>
               {b.submission?.review_comment && (
@@ -1429,6 +1448,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
 }
 function Templates() {
   const { user, run, notify } = useApp();
+  const navigate = useNavigate();
   const [templates, reload] = useLoad("/templates");
   const [cats] = useLoad("/template-categories");
   const [deps] = useLoad("/departments");
@@ -1445,6 +1465,7 @@ function Templates() {
   const [infoError, setInfoError] = useState("");
   const [job, setJob] = useState<any>(null);
   const [downloadMode, setDownloadMode] = useState(false);
+  const [schemeMode, setSchemeMode] = useState(false);
   const [downloadSelection, setDownloadSelection] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
   const filteredTemplates = templates?.filter(
@@ -1504,11 +1525,23 @@ function Templates() {
               className={downloadMode ? "button selected" : "button"}
               onClick={() => {
                 setDownloadMode((value) => !value);
+                setSchemeMode(false);
                 setDownloadSelection([]);
               }}
             >
               <Download size={16} />
               {downloadMode ? "取消批量下载" : "批量下载"}
+            </button>
+            <button
+              className={schemeMode ? "button selected" : "button"}
+              onClick={() => {
+                setSchemeMode((value) => !value);
+                setDownloadMode(false);
+                setDownloadSelection([]);
+              }}
+            >
+              <Layers3 size={16} />
+              {schemeMode ? "取消组合方案" : "组合成方案"}
             </button>
             <button
               className="primary"
@@ -1527,17 +1560,33 @@ function Templates() {
           <span className="muted">
             共 {filteredTemplates?.length || 0} 套模板
           </span>
-          {downloadMode && (
+          {(downloadMode || schemeMode) && (
             <div className="template-batch-download-bar">
               <span>已选 {downloadSelection.length} 套</span>
-              <button
-                className="primary"
-                disabled={!downloadSelection.length || downloading}
-                onClick={downloadSelected}
-              >
-                <Download size={15} />
-                {downloading ? "打包中…" : "下载已选模板"}
-              </button>
+              {schemeMode ? (
+                <button
+                  className="primary"
+                  disabled={!downloadSelection.length}
+                  onClick={() =>
+                    navigate(
+                      "/ppt-schemes?template_ids=" +
+                        encodeURIComponent(downloadSelection.join(",")),
+                    )
+                  }
+                >
+                  <Layers3 size={15} />
+                  用已选模板创建方案
+                </button>
+              ) : (
+                <button
+                  className="primary"
+                  disabled={!downloadSelection.length || downloading}
+                  onClick={downloadSelected}
+                >
+                  <Download size={15} />
+                  {downloading ? "打包中…" : "下载已选模板"}
+                </button>
+              )}
             </div>
           )}
           <div className="library-filter-controls">
@@ -1564,7 +1613,7 @@ function Templates() {
                 className="template-preview-trigger"
                 aria-label={`预览模板 ${t.name}`}
                 onClick={() =>
-                  downloadMode
+                  downloadMode || schemeMode
                     ? setDownloadSelection((items) =>
                         items.includes(t.id)
                           ? items.filter((id) => id !== t.id)

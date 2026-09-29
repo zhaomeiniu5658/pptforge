@@ -398,8 +398,8 @@ class ProjectUpdate(BaseModel):
 @app.put("/api/projects/{id}")
 def update_project(id: str, b: ProjectUpdate, u=USER, db=DB):
     p = project_access(db, u, id, True)
-    if u.role != "business" or p.business_id != u.id:
-        raise HTTPException(403, "仅项目商务负责人可编辑")
+    if not business_or_admin(u, p):
+        raise HTTPException(403, "仅项目商务负责人或管理员可编辑")
     leader = db.get(User, b.leader_id)
     if not leader or not leader.active:
         raise HTTPException(422, "所选负责人不存在或已停用")
@@ -437,7 +437,7 @@ def update_project(id: str, b: ProjectUpdate, u=USER, db=DB):
 
 @app.post("/api/projects")
 def create_project(b: ProjectIn, u=USER, db=DB):
-    if u.role != "business":
+    if u.role not in ("business", "admin"):
         raise HTTPException(403, "需要商务权限")
     for id in [b.leader_id] + [a.user_id for a in b.assignments]:
         person = db.get(User, id)
@@ -549,8 +549,8 @@ def get_project(id: str, u=USER, db=DB):
 @app.delete("/api/projects/{id}")
 def delete_project(id: str, u=USER, db=DB):
     p = project_access(db, u, id)
-    if u.role != "business" or p.business_id != u.id:
-        raise HTTPException(403, "仅项目商务负责人可删除")
+    if not business_or_admin(u, p):
+        raise HTTPException(403, "仅项目商务负责人或管理员可删除")
     db.refresh(p, with_for_update=True)
     if p.status == "deleted":
         raise HTTPException(404, "项目不存在或已删除")
@@ -805,8 +805,8 @@ def review(id: str, b: ReviewIn, u=USER, db=DB):
         raise HTTPException(404, "提交不存在")
     bk = db.get(Booklet, s.booklet_id)
     p = project_access(db, u, bk.project_id, True)
-    if u.role != "business" or p.business_id != u.id:
-        raise HTTPException(403, "必须由项目商务负责人处理")
+    if not business_or_admin(u, p):
+        raise HTTPException(403, "必须由项目商务负责人或管理员处理")
     db.refresh(s, with_for_update=True)
     if s.status != "submitted" or bk.latest_submission_id != s.id:
         raise HTTPException(409, "此提交已确认或已被新提交替代")
@@ -877,6 +877,164 @@ def templates(u=USER, db=DB):
             }
         )
     return out
+
+
+class PptSchemeIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=2000)
+    template_ids: list[str] = Field(min_length=1, max_length=60)
+
+
+def scheme_template_rows(db, u, template_ids):
+    if len(template_ids) != len(set(template_ids)):
+        raise HTTPException(422, "方案中不能重复选择同一个模板")
+    rows = []
+    for template_id in template_ids:
+        t = db.get(Template, template_id)
+        if (
+            not t
+            or not t.active
+            or t.status != "published"
+            or (
+                u.role != "admin"
+                and (
+                    not t.shared
+                    or t.department_id != u.department_id
+                    or not db.scalar(
+                        select(Category).where(
+                            Category.id == t.category_id, Category.active == True
+                        )
+                    )
+                )
+            )
+        ):
+            raise HTTPException(403, "所选模板不可用于方案")
+        if u.role == "admin" and not db.scalar(
+            select(Category).where(Category.id == t.category_id, Category.active == True)
+        ):
+            raise HTTPException(422, "所选模板分类已停用")
+        version = (
+            db.get(TemplateVersion, t.current_version_id)
+            if t.current_version_id
+            else None
+        )
+        if not version or not version.documents:
+            raise HTTPException(422, "所选模板没有可用内容")
+        rows.append((t, version))
+    return rows
+
+
+def ppt_scheme_out(db, scheme):
+    items = []
+    for item in db.scalars(
+        select(PptSchemeItem)
+        .where(PptSchemeItem.scheme_id == scheme.id)
+        .order_by(PptSchemeItem.position)
+    ):
+        template = db.get(Template, item.template_id)
+        version = db.get(TemplateVersion, item.template_version_id)
+        if not template or not version:
+            continue
+        items.append(
+            {
+                **asdict(item),
+                "template": {
+                    **asdict(template),
+                    "documents": version.documents,
+                    "diagnostics": version.diagnostics or [],
+                    "published": version.published,
+                },
+            }
+        )
+    return {**asdict(scheme), "items": items, "template_count": len(items)}
+
+
+def can_manage_scheme(u, scheme):
+    return u.role == "admin" or scheme.owner_id == u.id
+
+
+@app.get("/api/ppt-schemes")
+def ppt_schemes(u=USER, db=DB):
+    rows = db.scalars(
+        select(PptScheme)
+        .where(PptScheme.status != "deleted", PptScheme.active == True)
+        .order_by(PptScheme.created_at.desc())
+    )
+    return [ppt_scheme_out(db, x) for x in rows]
+
+
+@app.post("/api/ppt-schemes")
+def create_ppt_scheme(b: PptSchemeIn, u=USER, db=DB):
+    scheme = PptScheme(name=b.name.strip(), description=b.description.strip(), owner_id=u.id)
+    db.add(scheme)
+    db.flush()
+    rows = scheme_template_rows(db, u, b.template_ids)
+    for position, (template, version) in enumerate(rows):
+        db.add(
+            PptSchemeItem(
+                scheme_id=scheme.id,
+                template_id=template.id,
+                template_version_id=version.id,
+                position=position,
+            )
+        )
+    audit(db, u, "ppt_scheme.create", scheme.id, {"template_ids": b.template_ids})
+    db.commit()
+    return ppt_scheme_out(db, scheme)
+
+
+@app.get("/api/ppt-schemes/{id}")
+def get_ppt_scheme(id: str, u=USER, db=DB):
+    scheme = db.get(PptScheme, id)
+    if not scheme or scheme.status == "deleted":
+        raise HTTPException(404, "PPT 方案不存在")
+    return ppt_scheme_out(db, scheme)
+
+
+@app.patch("/api/ppt-schemes/{id}")
+def update_ppt_scheme(id: str, b: PptSchemeIn, u=USER, db=DB):
+    scheme = db.scalar(
+        select(PptScheme).where(PptScheme.id == id).with_for_update()
+    )
+    if not scheme or scheme.status == "deleted":
+        raise HTTPException(404, "PPT 方案不存在")
+    if not can_manage_scheme(u, scheme):
+        raise HTTPException(403, "无权编辑此 PPT 方案")
+    rows = scheme_template_rows(db, u, b.template_ids)
+    db.query(PptSchemeItem).filter(PptSchemeItem.scheme_id == scheme.id).delete(
+        synchronize_session=False
+    )
+    for position, (template, version) in enumerate(rows):
+        db.add(
+            PptSchemeItem(
+                scheme_id=scheme.id,
+                template_id=template.id,
+                template_version_id=version.id,
+                position=position,
+            )
+        )
+    scheme.name = b.name.strip()
+    scheme.description = b.description.strip()
+    scheme.version += 1
+    audit(db, u, "ppt_scheme.update", scheme.id, {"template_ids": b.template_ids})
+    db.commit()
+    return ppt_scheme_out(db, scheme)
+
+
+@app.delete("/api/ppt-schemes/{id}")
+def delete_ppt_scheme(id: str, u=USER, db=DB):
+    scheme = db.scalar(
+        select(PptScheme).where(PptScheme.id == id).with_for_update()
+    )
+    if not scheme or scheme.status == "deleted":
+        raise HTTPException(404, "PPT 方案不存在")
+    if not can_manage_scheme(u, scheme):
+        raise HTTPException(403, "无权删除此 PPT 方案")
+    scheme.status = "deleted"
+    scheme.active = False
+    audit(db, u, "ppt_scheme.delete", scheme.id)
+    db.commit()
+    return {"ok": True}
 
 
 def template_for_download(db, u, template_id):
@@ -986,6 +1144,67 @@ def download_template(id: str, u=USER, db=DB):
         content=data,
         media_type="application/zip",
         headers={"Content-Disposition": attachment_header(filename)},
+    )
+
+
+@app.get("/api/ppt-schemes/{id}/download")
+def download_ppt_scheme(id: str, u=USER, db=DB):
+    scheme = db.get(PptScheme, id)
+    if not scheme or scheme.status == "deleted" or not scheme.active:
+        raise HTTPException(404, "PPT 方案不存在或已停用")
+    payload = ppt_scheme_out(db, scheme)
+    pages = []
+    for item in payload["items"]:
+        for index, doc in enumerate(item["template"]["documents"]):
+            pages.append(
+                {
+                    "title": item["template"]["name"]
+                    + (f" · 第 {index + 1} 页" if len(item["template"]["documents"]) > 1 else ""),
+                    "document": doc,
+                }
+            )
+    if not pages:
+        raise HTTPException(422, "PPT 方案没有可下载页面")
+    compiled = tool(
+        "/internal/compile",
+        {"pages": pages, "options": {"title": scheme.name, "navigation": True}},
+    )
+    if any(x.get("severity") == "error" for x in compiled.get("diagnostics", [])):
+        raise HTTPException(422, "PPT 方案存在未解决的转换问题，下载已中止")
+    manifest = {
+        "scheme": scheme.name,
+        "scheme_id": scheme.id,
+        "version": scheme.version,
+        "templates": [
+            {
+                "name": item["template"]["name"],
+                "template_id": item["template"]["id"],
+                "version_id": item["template_version_id"],
+            }
+            for item in payload["items"]
+        ],
+        "pages": [{"title": page["title"]} for page in pages],
+    }
+    data = bundle(
+        compiled["html"],
+        [
+            tool(
+                "/internal/compile",
+                {"pages": [page], "options": {"navigation": False}},
+            )["html"]
+            for page in pages
+        ],
+        manifest,
+    )
+    audit(db, u, "ppt_scheme.download", scheme.id, {"version": scheme.version})
+    db.commit()
+    filename = safe_download_name(scheme.name) + ".zip"
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="quarkmed-scheme.zip"; filename*=UTF-8\'\'{quote(filename)}'
+        },
     )
 
 
@@ -1117,6 +1336,11 @@ class TemplateImportIn(BaseModel):
     template_ids: list[str] = Field(min_length=1, max_length=30)
 
 
+class ProjectDesignImportIn(BaseModel):
+    template_ids: list[str] = Field(default_factory=list, max_length=30)
+    scheme_ids: list[str] = Field(default_factory=list, max_length=30)
+
+
 @app.post("/api/booklets/{id}/templates")
 def use_templates(id: str, b: TemplateImportIn, u=USER, db=DB):
     bk = booklet_access(db, u, id, True)
@@ -1148,6 +1372,114 @@ def use_templates(id: str, b: TemplateImportIn, u=USER, db=DB):
             )
     audit(db, u, "template.use", id)
     snapshot_booklet(db, u, bk, "template_import")
+    db.commit()
+    return booklet_out(db, bk, True)
+
+
+@app.post("/api/booklets/{id}/design-import")
+def design_import(id: str, b: ProjectDesignImportIn, u=USER, db=DB):
+    """Allow a project manager to seed a contributor booklet from the libraries.
+
+    This is intentionally separate from the contributor-only template endpoint:
+    administrators and the project's business owner can help a related person
+    start a booklet, while contributors still cannot write another person's
+    booklet.
+    """
+    if not b.template_ids and not b.scheme_ids:
+        raise HTTPException(422, "请选择 PPT 模板或 PPT 方案")
+    bk = db.get(Booklet, id)
+    if not bk:
+        raise HTTPException(404, "分册不存在")
+    project = project_access(db, u, bk.project_id, True)
+    if not business_or_admin(u, project):
+        raise HTTPException(403, "仅项目商务负责人或管理员可为分册添加设计")
+    db.refresh(bk, with_for_update=True)
+
+    for template_id in sorted(set(b.template_ids)):
+        db.scalar(select(Template).where(Template.id == template_id).with_for_update())
+    for scheme_id in sorted(set(b.scheme_ids)):
+        db.scalar(select(PptScheme).where(PptScheme.id == scheme_id).with_for_update())
+
+    imported_pages = 0
+    def append_template(template, version):
+        nonlocal imported_pages
+        if (
+            not template
+            or not template.active
+            or template.status != "published"
+            or not version
+            or not version.documents
+        ):
+            raise HTTPException(422, "所选模板当前不可用于设计")
+        category = db.get(Category, template.category_id)
+        if not category or not category.active:
+            raise HTTPException(422, "所选模板分类已停用")
+        for index, document in enumerate(version.documents):
+            add_page(
+                db,
+                u,
+                bk,
+                template.name + (" · " + str(index + 1) if len(version.documents) > 1 else ""),
+                normalize(document),
+                "template",
+                version.id,
+            )
+            imported_pages += 1
+    for template_id in b.template_ids:
+        template = db.get(Template, template_id)
+        version = (
+            db.get(TemplateVersion, template.current_version_id)
+            if template and template.current_version_id
+            else None
+        )
+        append_template(template, version)
+
+    for scheme_id in b.scheme_ids:
+        scheme = db.get(PptScheme, scheme_id)
+        if not scheme or scheme.status == "deleted" or not scheme.active:
+            raise HTTPException(404, "PPT 方案不存在或已停用")
+        if u.role != "admin" and scheme.owner_id != u.id:
+            raise HTTPException(403, "无权使用此 PPT 方案")
+        items = list(
+            db.scalars(
+                select(PptSchemeItem)
+                .where(PptSchemeItem.scheme_id == scheme.id)
+                .order_by(PptSchemeItem.position)
+            )
+        )
+        if not items:
+            raise HTTPException(422, "所选 PPT 方案没有可用模板")
+        for item in items:
+            append_template(
+                db.get(Template, item.template_id),
+                db.get(TemplateVersion, item.template_version_id),
+            )
+
+    if not imported_pages:
+        raise HTTPException(422, "所选内容没有可导入页面")
+    snapshot_booklet(db, u, bk, "design_import")
+    db.add(
+        Notification(
+            user_id=bk.owner_id,
+            project_id=project.id,
+            message="项目负责人已为「"
+            + bk.title
+            + "」添加 "
+            + str(imported_pages)
+            + " 个设计页面",
+        )
+    )
+    audit(
+        db,
+        u,
+        "booklet.design_import",
+        bk.id,
+        {
+            "template_ids": b.template_ids,
+            "scheme_ids": b.scheme_ids,
+            "page_count": imported_pages,
+        },
+    )
     db.commit()
     return booklet_out(db, bk, True)
 
