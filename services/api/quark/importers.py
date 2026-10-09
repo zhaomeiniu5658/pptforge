@@ -261,7 +261,10 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
                     target.append(int(value))
         width_candidates = [x for x in widths if 320 <= x <= 2560]
         height_candidates = [x for x in heights if 300 <= x <= 18000]
-        width = max(width_candidates, default=1440)
+        # A max-width such as 1200px is usually an inner content column, not the
+        # viewport the design was authored for. Keep the standard desktop
+        # preview width unless the source explicitly uses a wider canvas.
+        width = max([1440, *[x for x in width_candidates if x > 1440]])
         height = max(height_candidates, default=900)
         return {"width": width, "height": height}
 
