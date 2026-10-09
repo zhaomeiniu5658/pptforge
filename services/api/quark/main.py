@@ -849,8 +849,43 @@ def submission(id: str, u=USER, db=DB):
     }
 
 
+def template_visible_to_user(db, t, u):
+    if not t or t.status == "deleted":
+        return False
+    if u.role == "admin":
+        return True
+    return (
+        t.active
+        and t.status == "published"
+        and (t.shared or t.department_id == u.department_id)
+        and bool(
+            db.scalar(
+                select(Category).where(
+                    Category.id == t.category_id, Category.active == True
+                )
+            )
+        )
+    )
+
+
+def template_out(db, t, include_documents=True):
+    v = (
+        db.get(TemplateVersion, t.current_version_id)
+        if t.current_version_id
+        else None
+    )
+    return {
+        **asdict(t),
+        "documents": v.documents if v and include_documents else [],
+        "diagnostics": v.diagnostics if v else [],
+        "published": v.published if v else False,
+        "document_count": len(v.documents) if v else 0,
+        "has_content": bool(v and v.documents),
+    }
+
+
 @app.get("/api/templates")
-def templates(u=USER, db=DB):
+def templates(summary: bool = False, u=USER, db=DB):
     q = select(Template).where(Template.status != "deleted").order_by(Template.created_at.desc())
     if u.role != "admin":
         q = q.where(
@@ -861,22 +896,18 @@ def templates(u=USER, db=DB):
                 select(Category.id).where(Category.active == True)
             ),
         )
-    out = []
-    for t in db.scalars(q):
-        v = (
-            db.get(TemplateVersion, t.current_version_id)
-            if t.current_version_id
-            else None
-        )
-        out.append(
-            {
-                **asdict(t),
-                "documents": v.documents if v else [],
-                "diagnostics": v.diagnostics if v else [],
-                "published": v.published if v else False,
-            }
-        )
-    return out
+    return [
+        template_out(db, t, include_documents=not summary)
+        for t in db.scalars(q)
+    ]
+
+
+@app.get("/api/templates/{id}")
+def get_template(id: str, u=USER, db=DB):
+    t = db.get(Template, id)
+    if not template_visible_to_user(db, t, u):
+        raise HTTPException(404, "模板不存在或不可用")
+    return template_out(db, t, include_documents=True)
 
 
 class PptSchemeIn(BaseModel):
@@ -1299,6 +1330,39 @@ def patch_template_content(id: str, b: TemplateContentPatch, u=USER, db=DB):
         "published": False,
     }
 
+
+
+@app.post("/api/templates/{id}/duplicate")
+def duplicate_template(id: str, u=USER, db=DB):
+    admin(u)
+    source = db.scalar(select(Template).where(Template.id == id).with_for_update())
+    if not source or source.status == "deleted":
+        raise HTTPException(404, "模板不存在或已删除")
+    version = db.get(TemplateVersion, source.current_version_id) if source.current_version_id else None
+    copy = Template(
+        name=f"{source.name}_副本",
+        category_id=source.category_id,
+        department_id=source.department_id,
+        shared=source.shared,
+        active=False,
+        status="draft",
+    )
+    db.add(copy)
+    db.flush()
+    if version:
+        copy_version = TemplateVersion(
+            template_id=copy.id,
+            documents=version.documents,
+            diagnostics=version.diagnostics,
+            source_asset_id=version.source_asset_id,
+            published=False,
+        )
+        db.add(copy_version)
+        db.flush()
+        copy.current_version_id = copy_version.id
+    audit(db, u, "template.duplicate", copy.id, {"source_template_id": source.id})
+    db.commit()
+    return template_out(db, copy, include_documents=False)
 
 @app.delete("/api/templates/{id}")
 def delete_template(id: str, u=USER, db=DB):
@@ -1926,6 +1990,11 @@ def dashboard(u=USER, db=DB):
     ps = projects(u, db)
     return {
         "projects": ps,
+        "schemes": db.scalar(
+            select(func.count())
+            .select_from(PptScheme)
+            .where(PptScheme.status != "deleted", PptScheme.active == True)
+        ),
         "templates": db.scalar(
             select(func.count())
             .select_from(Template)

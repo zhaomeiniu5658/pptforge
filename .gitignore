@@ -12,3 +12,6 @@ backups/
 *.tsbuildinfo
 # An empty nested repository artifact; the application source lives at the root.
 AI_PPT_html/
+
+# Local deployment evidence and runtime state
+.sealos/

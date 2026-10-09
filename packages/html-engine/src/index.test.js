@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalize, patchNode, deleteNode, compile } from "./index.js";
+import { normalize, patchNode, deleteNode, duplicateNode, compile } from "./index.js";
 test("duplicate text edits exactly one persistent node and survives reparse", () => {
   const d = normalize(
     '<p data-node-id="one">同名</p><p data-node-id="two">同名</p>',
@@ -8,6 +8,24 @@ test("duplicate text edits exactly one persistent node and survives reparse", ()
   const changed = patchNode(d, "two", { text: "<修改>" });
   assert.match(changed.html, /one">同名/);
   assert.match(changed.html, /two">&lt;修改&gt;/);
+});
+
+
+
+test("drag transform patch is persisted on selected node", () => {
+  const d = normalize('<h1 data-node-id="title">标题</h1>');
+  const changed = patchNode(d, "title", { styles: { transform: "translate(12px, 8px)" } });
+  assert.match(changed.html, /transform:\s*translate\(12px, 8px\)/);
+});
+
+test("duplicate selected element creates a renamed copy with new persistent ids", () => {
+  const d = normalize('<section data-node-id="box"><h1 data-node-id="title">方案标题</h1><p data-node-id="body">正文</p></section>');
+  const changed = duplicateNode(d, "title");
+  assert.match(changed.html, /方案标题/);
+  assert.match(changed.html, /方案标题_副本/);
+  const ids = [...changed.html.matchAll(/data-node-id="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(!ids.includes("title") || ids.filter((id) => id === "title").length === 1);
 });
 
 test("delete removes exactly one selected node and related interactions", () => {

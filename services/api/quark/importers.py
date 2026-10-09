@@ -14,6 +14,17 @@ REMOTE_HOSTS = {
     "fonts.gstatic.com",
     "cdnjs.cloudflare.com",
 }
+NAMESPACE_URLS = {
+    "http://www.w3.org/2000/svg",
+    "https://www.w3.org/2000/svg",
+    "http://www.w3.org/1999/xlink",
+    "https://www.w3.org/1999/xlink",
+}
+
+
+def namespace_url(url):
+    clean = str(url or "").strip().strip("'\";,)")
+    return clean in NAMESPACE_URLS
 
 
 def safe_path(name):
@@ -124,7 +135,11 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
 
     def load(url, base):
         nonlocal remote_bytes
+        if namespace_url(url):
+            return None
         path = resolve(url, base)
+        if namespace_url(path):
+            return None
         if path in files:
             return files[path], mimetypes.guess_type(path)[0] or "application/octet-stream", path
         if archive_remote and urlsplit(path).scheme in ("http", "https"):
@@ -151,7 +166,7 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
         return None
 
     def resource(url, base):
-        if url.startswith(("data:", "#")):
+        if url.startswith(("data:", "#")) or namespace_url(url):
             return url
         found = load(url, base)
         if not found:
@@ -201,7 +216,7 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
         """Archive known image/font URLs embedded in inline demo data."""
         def replace(match):
             url = match.group(0)
-            if url.startswith(("data:", "#")):
+            if url.startswith(("data:", "#")) or namespace_url(url):
                 return url
             split = urlsplit(url)
             if split.scheme not in ("http", "https"):
@@ -211,6 +226,44 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
             except Exception:
                 return url
         return re.sub(r'https?://[^\s\'"<>`\\)]+', replace, script)
+
+    def infer_source_size(html, soup, css):
+        text = "\n".join([html or "", css or ""])
+        widths = []
+        heights = []
+        for pattern in (
+            r"(?:width|max-width|min-width)\s*:\s*(\d{3,4})px",
+            r"w-\[(\d{3,4})px\]",
+            r"max-w-\[(\d{3,4})px\]",
+            r"--[\w-]*(?:w|width)[\w-]*\s*:\s*(\d{3,4})px",
+        ):
+            widths.extend(int(x) for x in re.findall(pattern, text, flags=re.I))
+        for pattern in (
+            r"(?:height|min-height)\s*:\s*(\d{3,5})px",
+            r"h-\[(\d{3,5})px\]",
+            r"min-h-\[(\d{3,5})px\]",
+            r"--[\w-]*(?:h|height)[\w-]*\s*:\s*(\d{3,5})px",
+        ):
+            heights.extend(int(x) for x in re.findall(pattern, text, flags=re.I))
+        for node in soup.find_all(True):
+            viewbox = node.get("viewBox") or node.get("viewbox")
+            if viewbox:
+                parts = re.split(r"[\s,]+", str(viewbox).strip())
+                if len(parts) == 4:
+                    try:
+                        widths.append(int(float(parts[2])))
+                        heights.append(int(float(parts[3])))
+                    except ValueError:
+                        pass
+            for attr, target in (("width", widths), ("height", heights)):
+                value = str(node.get(attr, ""))
+                if re.fullmatch(r"\d{3,5}", value):
+                    target.append(int(value))
+        width_candidates = [x for x in widths if 320 <= x <= 2560]
+        height_candidates = [x for x in heights if 300 <= x <= 18000]
+        width = max(width_candidates, default=1440)
+        height = max(height_candidates, default=900)
+        return {"width": width, "height": height}
 
     def inline_event_script(handlers):
         lines = ["(() => {"]
@@ -243,8 +296,12 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
                 style = soup.new_tag("style")
                 style.string = css_assets(content.decode("utf-8-sig"), csspath)
                 link.replace_with(style)
+        style_parts = []
         for style in soup.find_all("style"):
-            style.string = css_assets(str(style.string or ""), path)
+            processed_css = css_assets(style.get_text() or "", path)
+            style_parts.append(processed_css)
+            style.string = processed_css
+        page_css = "\n".join(part for part in [generated, *style_parts] if part)
         for element in soup.find_all(True):
             for attr in ("src", "poster"):
                 if element.name != "script" and element.has_attr(attr):
@@ -282,7 +339,27 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
             script.decompose()
         if inline_handlers:
             runtime_scripts.append(inline_event_script(inline_handlers))
-        doc = normalize({"html": str(soup), "css": generated, "runtimeScripts": runtime_scripts})
+        for style in soup.find_all("style"):
+            style.decompose()
+        body = soup.body
+        if body:
+            body_attrs = " ".join(
+                f'{key}="{str(value).replace(chr(34), "&quot;")}"'
+                for key, value in body.attrs.items()
+                if key in {"class", "style", "id"}
+            )
+            body_html = "".join(str(child) for child in body.contents)
+            if body_attrs:
+                body_html = f"<div {body_attrs}>{body_html}</div>"
+        else:
+            body_html = str(soup)
+        source_size = infer_source_size(original, soup, page_css)
+        doc = normalize({
+            "html": body_html,
+            "css": page_css,
+            "runtimeScripts": runtime_scripts,
+            "sourceSize": source_size,
+        })
         reference = {"type": "html_import", "path": path, "title": soup.title.get_text() if soup.title else PurePosixPath(path).stem}
         doc["sourceReferences"].append(reference)
         doc["diagnostics"].extend(diagnostics)

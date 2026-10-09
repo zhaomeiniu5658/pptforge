@@ -16,6 +16,7 @@ import {
   normalize,
   patchNode,
   deleteNode,
+  duplicateNode,
   editablePreview,
 } from "@quark/html-engine";
 import { api } from "./api";
@@ -87,12 +88,32 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
           "background-color": data.styles.backgroundColor,
           "text-align": data.styles.textAlign,
           padding: data.styles.padding,
+          width: data.styles.width,
+          height: data.styles.height,
+          transform: data.styles.transform,
         });
+      }
+      if (data.type === "quark:drag" || data.type === "quark:resize") {
+        try {
+          change(
+            documents.map((doc, index) =>
+              index === active
+                ? patchNode(doc, data.id, { styles: data.styles })
+                : doc,
+            ),
+          );
+          setSelected((current: any) =>
+            current?.id === data.id ? { ...current, styles: data.styles } : current,
+          );
+          setStyles((current) => ({ ...current, ...data.styles }));
+        } catch (e: any) {
+          setError(e.message);
+        }
       }
     };
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [channel]);
+  }, [active, channel, documents]);
   useEffect(() => {
     if (!canvas.current) return;
     const observer = new ResizeObserver(([entry]) =>
@@ -130,6 +151,25 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
       return false;
     }
   }
+
+  function duplicateSelected() {
+    if (!selected) return;
+    try {
+      const target = selected.id;
+      change(
+        documents.map((doc, index) =>
+          index === active ? duplicateNode(doc, target) : doc,
+        ),
+      );
+      setSelected(null);
+      setText("");
+      setLinkUrl("");
+      setStyles({});
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
   function deleteSelected() {
     if (!selected) return;
     try {
@@ -277,8 +317,12 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               撤销
             </button>
             <button
-              disabled={saving || source !== null || documents.length >= 60}
+              disabled={saving || source !== null || (!selected && documents.length >= 60)}
               onClick={() => {
+                if (selected) {
+                  duplicateSelected();
+                  return;
+                }
                 const next = [...documents];
                 next.splice(active + 1, 0, structuredClone(current));
                 change(next);
@@ -287,7 +331,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               }}
             >
               <Copy size={14} />
-              复制
+              {selected ? "复制元素" : "复制页面"}
             </button>
             <button
               aria-label="上移页面"
@@ -535,6 +579,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
                       ["margin", "外间距", "0px"],
                       ["width", "宽度", "100%"],
                       ["height", "高度", "auto"],
+                      ["transform", "位移", "translate(12px, 8px)"],
                     ].map(([key, label, placeholder]) => (
                       <Field key={key} label={label}>
                         <input

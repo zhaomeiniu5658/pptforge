@@ -228,6 +228,35 @@ def execute(id):
                     docs = html_import(data, a.name,
                         archive_remote=j.kind == "template_import",
                         on_page=lambda ix, total: stage(db, j, f"归档页面与资源（{ix + 1}/{total}）"))
+                    # Measure imported flow pages with the same Chromium renderer
+                    # used by preview/export. This gives the UI a real canvas
+                    # width and long-page height instead of falling back to a
+                    # 16:9 viewport.
+                    for ix, doc in enumerate(docs):
+                        try:
+                            stage(db, j, f"测量页面尺寸（{ix + 1}/{len(docs)}）")
+                            guessed = doc.get("sourceSize") or {"width": 1440, "height": 900}
+                            measured = tool(
+                                "/internal/render",
+                                {
+                                    "document": doc,
+                                    "width": max(320, min(2560, int(guessed.get("width", 1440)))),
+                                    "height": max(200, min(10000, int(guessed.get("height", 900)))),
+                                },
+                            ).get("metrics", {})
+                            if measured.get("width") and measured.get("height"):
+                                doc["sourceSize"] = {
+                                    "width": int(measured["width"]),
+                                    "height": int(measured["height"]),
+                                }
+                        except Exception as exc:
+                            doc.setdefault("diagnostics", []).append(
+                                {
+                                    "source": "import",
+                                    "severity": "warning",
+                                    "message": f"页面尺寸自动测量失败，预览将使用自适应尺寸（{type(exc).__name__}）。",
+                                }
+                            )
                     diagnostics = [
                         {**d, "message": f"第 {ix + 1} 页：{d['message']}"}
                         for ix, doc in enumerate(docs) for d in doc.get("diagnostics", [])

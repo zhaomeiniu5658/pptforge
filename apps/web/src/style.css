@@ -974,6 +974,24 @@ td small {
   width: 100%;
   pointer-events: none;
 }
+.template-preview-placeholder {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  height: 100%;
+  color: #6f8ec5;
+  background:
+    radial-gradient(circle at 22% 18%, #dbeafe 0, transparent 28%),
+    linear-gradient(135deg, #f8fbff 0%, #eaf1ff 100%);
+}
+.template-preview-placeholder svg {
+  color: #2563eb;
+}
+.template-preview-placeholder span {
+  font-size: 12px;
+  font-weight: 600;
+}
 .template-card h3 {
   font-size: 16px;
   padding: 18px 17px 5px;
@@ -1744,6 +1762,17 @@ td small {
 .template-detail-modal {
   height: calc(100vh - 70px);
   max-height: calc(100vh - 70px);
+  min-width: 760px;
+  max-width: calc(100vw - 70px);
+  resize: horizontal;
+}
+.template-detail-resize-hint {
+  flex: 0 0 auto;
+  padding: 8px 30px 0;
+  color: #8390a6;
+  font-size: 12px;
+  text-align: right;
+  user-select: none;
 }
 .template-detail-modal .review-pages {
   flex: 1 1 auto;

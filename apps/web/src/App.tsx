@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -36,6 +36,7 @@ import {
   Palette,
   Trash2,
   Settings,
+  Copy,
 } from "lucide-react";
 import { api, downloadFile, roleNames, statusNames, date, remaining } from "./api";
 import {
@@ -56,6 +57,17 @@ import { TemplateContentEditor } from "./TemplateContentEditor";
 import { PptSchemeLibrary } from "./PptSchemeLibrary";
 import "./style.css";
 export const Context = React.createContext<any>(null);
+const visibleDiagnostic = (d: any) =>
+  !String(d?.message || "").includes("w3.org/2000/svg") &&
+  !String(d?.message || "").includes("w3.org/1999/xlink");
+const detailModalWidth = (detail: any) => {
+  const widths = (detail?.documents || [])
+    .map((d: any) => Number(d?.sourceSize?.width))
+    .filter((n: number) => Number.isFinite(n) && n > 0);
+  const desired = Math.max(1160, Math.min(1760, Math.max(0, ...widths) + 120));
+  const viewport = typeof window === "undefined" ? 1440 : window.innerWidth;
+  return Math.min(Math.max(760, viewport - 70), desired);
+};
 function Login({ onLogin }: any) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -454,10 +466,10 @@ function Dashboard() {
       <section className="stats">
         {(user.role === "admin"
           ? [
-              [d.templates, "已发布模板", Layers3],
-              [d.categories, "标准化分类", LayoutGrid],
-              [d.pending_templates, "待检查模板", ShieldCheck],
-              [ps.length, "方案项目", FolderOpen],
+              [d.schemes || 0, "方案库", Layers3],
+              [d.templates || 0, "模版库", LayoutGrid],
+              [ps.length, "项目总数", FolderOpen],
+              [ps.filter((p: any) => p.status === "active").length, "进行中项目", ShieldCheck],
             ]
           : [
               [ps.length, "参与项目", FolderOpen],
@@ -491,7 +503,7 @@ function Dashboard() {
             <span>{label}</span>
             <strong>
               {v}
-              <small> {label === "参与项目" ? "项" : "个"}</small>
+              <small> {label.includes("项目") ? "项" : "个"}</small>
             </strong>
           </div>
         ))}
@@ -1446,10 +1458,80 @@ export function TemplatePicker({ onSelect, onClose }: any) {
     </Modal>
   );
 }
+
+function TemplateCardPreview({ template, children }: { template: any; children?: React.ReactNode }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [document, setDocument] = useState<any>(template.documents?.[0] || null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setDocument(template.documents?.[0] || null);
+    setFailed(false);
+    setVisible(false);
+  }, [template.id, template.documents]);
+  useEffect(() => {
+    const node = root.current;
+    if (!node || visible || document || failed) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "360px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible, document, failed]);
+  useEffect(() => {
+    if (!visible || document || failed || !template.has_content) return;
+    let cancelled = false;
+    api(`/templates/${template.id}`)
+      .then((detail) => {
+        if (!cancelled) setDocument(detail.documents?.[0] || null);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, document, failed, template.id, template.has_content]);
+  return (
+    <div ref={root} className="template-image">
+      {document ? (
+        <Preview
+          document={document}
+          mini
+          miniViewportWidth={1520}
+          miniViewportHeight={900}
+        />
+      ) : (
+        <div className="template-preview-placeholder">
+          <Layers3 size={24} />
+          <span>
+            {failed
+              ? "预览加载失败"
+              : visible && template.has_content
+                ? "加载预览中…"
+                : `${template.document_count || 0} 页模板`}
+          </span>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
 function Templates() {
   const { user, run, notify } = useApp();
   const navigate = useNavigate();
-  const [templates, reload] = useLoad("/templates");
+  const [templates, reload] = useLoad("/templates?summary=1");
   const [cats] = useLoad("/template-categories");
   const [deps] = useLoad("/departments");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -1474,6 +1556,20 @@ function Templates() {
       (!selectedCategories.length ||
         selectedCategories.includes(t.category_id)),
   );
+  async function openTemplateDetail(template: any) {
+    try {
+      setDetail(await api(`/templates/${template.id}`));
+    } catch (error: any) {
+      notify(error.message);
+    }
+  }
+  async function openTemplateDesigner(template: any) {
+    try {
+      setEditingContent(await api(`/templates/${template.id}`));
+    } catch (error: any) {
+      notify(error.message);
+    }
+  }
   async function downloadOne(template: any) {
     setDownloading(true);
     try {
@@ -1485,6 +1581,20 @@ function Templates() {
       setDownloading(false);
     }
   }
+
+  async function duplicateTemplate(template: any) {
+    setDownloading(true);
+    try {
+      const copy = await api(`/templates/${template.id}/duplicate`, {}, "POST");
+      notify(`已复制为「${copy.name}」`);
+      reload();
+    } catch (error: any) {
+      notify(error.message);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   async function downloadSelected() {
     if (!downloadSelection.length) return;
     setDownloading(true);
@@ -1619,11 +1729,10 @@ function Templates() {
                           ? items.filter((id) => id !== t.id)
                           : [...items, t.id],
                       )
-                    : setDetail(t)
+                    : openTemplateDetail(t)
                 }
               >
-                <div className="template-image">
-                  <Preview document={t.documents[0]} mini miniViewportWidth={1520} miniViewportHeight={900} />
+                <TemplateCardPreview template={t}>
                   <span
                     className={
                       "template-status-label " +
@@ -1645,7 +1754,7 @@ function Templates() {
                       {downloadSelection.includes(t.id) ? "✓" : ""}
                     </span>
                   )}
-                </div>
+                </TemplateCardPreview>
                 <h3>{t.name}</h3>
               </button>
               <div className="template-card-bottom">
@@ -1654,7 +1763,7 @@ function Templates() {
                     className="template-icon-button"
                     data-tooltip="预览"
                     aria-label={`预览模板 ${t.name}`}
-                    onClick={() => setDetail(t)}
+                    onClick={() => openTemplateDetail(t)}
                   >
                     <Eye size={16} />
                   </button>
@@ -1667,6 +1776,17 @@ function Templates() {
                   >
                     <Download size={16} />
                   </button>
+                  {user.role === "admin" && (
+                    <button
+                      className="template-icon-button"
+                      data-tooltip="复制"
+                      aria-label={`复制模板 ${t.name}`}
+                      disabled={downloading}
+                      onClick={() => duplicateTemplate(t)}
+                    >
+                      <Copy size={16} />
+                    </button>
+                  )}
                   {user.role === "admin" && (
                     <>
                       <button
@@ -1690,7 +1810,7 @@ function Templates() {
                         className="template-icon-button"
                         data-tooltip="设计"
                         aria-label={`设计模板内容 ${t.name}`}
-                        onClick={() => setEditingContent(t)}
+                        onClick={() => openTemplateDesigner(t)}
                       >
                         <Palette size={16} />
                       </button>
@@ -1760,10 +1880,12 @@ function Templates() {
           title={detail.name}
           wide
           className="template-detail-modal"
+          style={{ width: detailModalWidth(detail) }}
           onClose={() => setDetail(null)}
         >
+          <div className="template-detail-resize-hint">拖动弹窗右下角可调整预览宽度</div>
           <div className="modal-body review-pages">
-            {detail.diagnostics.map((d: any, i: number) => (
+            {(detail.diagnostics || []).filter(visibleDiagnostic).map((d: any, i: number) => (
               <p
                 className={
                   "diagnostic " + (d.severity === "error" ? "error" : "")
@@ -1773,7 +1895,7 @@ function Templates() {
                 {d.message}
               </p>
             ))}
-            {detail.documents.map((d: any, i: number) => (
+            {(detail.documents || []).map((d: any, i: number) => (
               <div key={i}>
                 <h3>第 {i + 1} 页</h3>
                 <Preview
@@ -1977,9 +2099,7 @@ function Templates() {
           onDone={reload}
           onTemplate={(id: string) =>
             run(async () => {
-              const items = await api("/templates");
-              const item = items.find((t: any) => t.id === id);
-              if (!item) throw new Error("模板已删除或不可用");
+              const item = await api(`/templates/${id}`);
               setJob(null);
               setDetail(item);
             })

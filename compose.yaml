@@ -61,6 +61,9 @@ services:
     env_file: .env
     environment: *backend
     command: celery -A quark.tasks:celery worker --loglevel=info --concurrency=2
+    # The shared API image's HTTP health check does not apply to a queue worker.
+    healthcheck:
+      disable: true
     volumes: ["assets:/data/assets"]
     depends_on: [api]
     restart: unless-stopped

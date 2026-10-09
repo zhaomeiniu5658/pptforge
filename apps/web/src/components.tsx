@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X, LoaderCircle, Check, Download, AlertCircle } from "lucide-react";
 import { compile } from "@quark/html-engine";
 import { api, statusNames } from "./api";
+const visibleDiagnostic = (d: any) =>
+  !String(d?.message || "").includes("w3.org/2000/svg") &&
+  !String(d?.message || "").includes("w3.org/1999/xlink");
 export function Modal({
   title,
   subtitle,
@@ -9,6 +12,7 @@ export function Modal({
   onClose,
   wide = false,
   className = "",
+  style,
 }: any) {
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -24,6 +28,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        style={style}
       >
         <header className="modal-head">
           <div>
@@ -53,6 +58,7 @@ export function Preview({
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(270);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
   useEffect(() => {
     if ((!mini && !fitCanvas && !scrollable) || !ref.current) return;
     const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
@@ -63,7 +69,7 @@ export function Preview({
     try {
       const compiled = compile([{ document: doc }], { navigation: false }).html;
       if (!interactive || mini) return compiled;
-      const bridge = `(()=>{const height=()=>Math.ceil(Math.max(document.documentElement.scrollHeight,document.body?.scrollHeight||0,document.querySelector('main')?.scrollHeight||0,document.querySelector('[data-page-instance]')?.scrollHeight||0,document.querySelector('[data-page-instance]')?.getBoundingClientRect().bottom||0));const send=()=>parent.postMessage({type:'quark:preview-height',height:height()},'*');new ResizeObserver(send).observe(document.documentElement);if(document.body)new ResizeObserver(send).observe(document.body);addEventListener('load',send);setTimeout(send,300);setTimeout(send,1000);send();})();`;
+      const bridge = `(()=>{const metrics=()=>{const roots=[document.documentElement,document.body,document.querySelector('main'),document.querySelector('[data-page-instance]')].filter(Boolean);let width=0,height=0;for(const el of roots){const r=el.getBoundingClientRect();width=Math.max(width,el.scrollWidth||0,el.offsetWidth||0,r.right);height=Math.max(height,el.scrollHeight||0,el.offsetHeight||0,r.bottom);}document.body?.querySelectorAll('*').forEach(el=>{const r=el.getBoundingClientRect();width=Math.max(width,r.right,el.scrollWidth?el.getBoundingClientRect().left+el.scrollWidth:0);height=Math.max(height,r.bottom,el.scrollHeight?el.getBoundingClientRect().top+el.scrollHeight:0);});return {width:Math.ceil(width),height:Math.ceil(height)}};const send=()=>parent.postMessage({type:'quark:preview-metrics',...metrics()},'*');new ResizeObserver(send).observe(document.documentElement);if(document.body)new ResizeObserver(send).observe(document.body);addEventListener('load',send);setTimeout(send,300);setTimeout(send,1000);send();})();`;
       return compiled.replace("</body>", `<script>${bridge}</script></body>`);
     } catch {
       return "<p>页面暂不可预览</p>";
@@ -75,16 +81,20 @@ export function Preview({
     if (!frame) return;
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frame.contentWindow) return;
-      if (event.data?.type !== "quark:preview-height") return;
+      if (!["quark:preview-height", "quark:preview-metrics"].includes(event.data?.type)) return;
       const height = Number(event.data.height);
       if (Number.isFinite(height) && height > 0) {
         setContentHeight(Math.min(Math.max(height, 300), 18000));
+      }
+      const nextWidth = Number(event.data.width);
+      if (Number.isFinite(nextWidth) && nextWidth > 0) {
+        setContentWidth(Math.min(Math.max(nextWidth, 320), 2560));
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [interactive, mini, html]);
-  const fitWidth = Math.max(320, Math.min(Number(doc?.sourceSize?.width) || 1360, 2560));
+  const fitWidth = Math.max(320, Math.min(contentWidth || Number(doc?.sourceSize?.width) || 1360, 2560));
   const fitBaseHeight = Math.max(300, Math.min(Number(doc?.sourceSize?.height) || 765, 18000));
   const miniWidth = Math.max(320, Math.min(Number(miniViewportWidth) || 1000, 2560));
   const miniHeight = Math.max(300, Math.min(Number(miniViewportHeight) || 650, 18000));
@@ -118,6 +128,7 @@ export function Preview({
       }
       title={title}
       srcDoc={html}
+      loading={mini ? "lazy" : undefined}
       tabIndex={mini ? -1 : 0}
       className={interactive ? "interactive-preview-frame" : undefined}
       style={frameStyle}
@@ -246,7 +257,7 @@ export function JobView({ initial, onClose, onDone, onTemplate }: any) {
             下载 {job.result.name}
           </a>
         )}
-        {job.result?.diagnostics?.map((d: any, i: number) => (
+        {job.result?.diagnostics?.filter(visibleDiagnostic).map((d: any, i: number) => (
           <p key={i} className="diagnostic">
             {d.message}
           </p>
