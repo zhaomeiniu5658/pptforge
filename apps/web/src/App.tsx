@@ -64,7 +64,9 @@ const detailModalWidth = (detail: any) => {
   const widths = (detail?.documents || [])
     .map((d: any) => Number(d?.sourceSize?.width))
     .filter((n: number) => Number.isFinite(n) && n > 0);
-  const desired = Math.max(1160, Math.min(1760, Math.max(0, ...widths) + 120));
+  const desired = widths.length
+    ? Math.max(1160, Math.min(1760, Math.max(0, ...widths) + 120))
+    : 1560;
   const viewport = typeof window === "undefined" ? 1440 : window.innerWidth;
   return Math.min(Math.max(760, viewport - 70), desired);
 };

@@ -455,7 +455,7 @@ export function deleteNode(doc, id) {
     ),
   });
 }
-function scoped(doc, instance) {
+function scoped(doc, instance, { preserveFixed = false } = {}) {
   const d = normalize(doc),
     scope = `[data-page-instance="${instance}"]`,
     tree = parse(d.html),
@@ -566,6 +566,7 @@ function scoped(doc, instance) {
   root.walkDecls((x) => {
     x.value = rewriteValue(x.value, x.prop);
     if (
+      !preserveFixed &&
       ["position"].includes(x.prop) &&
       ["fixed", "sticky"].includes(x.value)
     ) {
@@ -598,7 +599,11 @@ function scoped(doc, instance) {
         const r = postcss.parse("x{" + a.value + "}");
         r.walkDecls((x) => {
           x.value = rewriteValue(x.value, x.prop);
-          if (x.prop === "position" && ["fixed", "sticky"].includes(x.value))
+          if (
+            !preserveFixed &&
+            x.prop === "position" &&
+            ["fixed", "sticky"].includes(x.value)
+          )
             x.value = "relative";
         });
         a.value = r.first.nodes.map((x) => x.toString()).join(";");
@@ -625,7 +630,12 @@ function scoped(doc, instance) {
 }
 export function compile(
   pages,
-  { title = "Quarkmed 方案", draft = false, navigation = true } = {},
+  {
+    title = "Quarkmed 方案",
+    draft = false,
+    navigation = true,
+    preserveFixed = false,
+  } = {},
 ) {
   const blocks = [],
     styles = [],
@@ -634,7 +644,7 @@ export function compile(
   for (let i = 0; i < pages.length; i++) {
     const p = pages[i],
       id = "page-" + i;
-    const s = scoped(p.document || p, id);
+    const s = scoped(p.document || p, id, { preserveFixed });
     styles.push(s.css);
     actions.push(...s.interactions);
     diagnostics.push(...s.diagnostics);

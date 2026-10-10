@@ -100,6 +100,21 @@ test("flow pages are not clipped like fixed slide pages", () => {
   assert.match(fixed, /class="qm-page-fixed"/);
   assert.match(fixed, /\.qm-page-fixed\{overflow:clip\}/);
 });
+
+test("interactive preview can preserve imported fixed navigation", () => {
+  const d = normalize({
+    html: '<nav class="floating" style="position:fixed">导航</nav><section>正文</section>',
+    css: ".floating{position:fixed;right:10px;top:10px}.sticky{position:sticky;top:0}",
+  });
+  const normal = compile([{ document: d }], { navigation: false }).html;
+  assert.match(normal, /position:relative/);
+  const preview = compile([{ document: d }], {
+    navigation: false,
+    preserveFixed: true,
+  }).html;
+  assert.match(preview, /position:fixed/);
+  assert.match(preview, /position:sticky/);
+});
 test("untrusted style imports rejected and readonly groups cannot be patched", () => {
   const d = normalize({
     html: '<div data-node-id="n" data-readonly="true">固定图形</div>',

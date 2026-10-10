@@ -67,9 +67,12 @@ export function Preview({
   }, [mini, fitCanvas, scrollable]);
   const html = useMemo(() => {
     try {
-      const compiled = compile([{ document: doc }], { navigation: false }).html;
+      const compiled = compile([{ document: doc }], {
+        navigation: false,
+        preserveFixed: interactive && scrollable,
+      }).html;
       if (!interactive || mini) return compiled;
-      const bridge = `(()=>{const metrics=()=>{const roots=[document.documentElement,document.body,document.querySelector('main'),document.querySelector('[data-page-instance]')].filter(Boolean);let width=0,height=0;for(const el of roots){const r=el.getBoundingClientRect();width=Math.max(width,el.scrollWidth||0,el.offsetWidth||0,r.right);height=Math.max(height,el.scrollHeight||0,el.offsetHeight||0,r.bottom);}document.body?.querySelectorAll('*').forEach(el=>{const r=el.getBoundingClientRect();width=Math.max(width,r.right,el.scrollWidth?el.getBoundingClientRect().left+el.scrollWidth:0);height=Math.max(height,r.bottom,el.scrollHeight?el.getBoundingClientRect().top+el.scrollHeight:0);});return {width:Math.ceil(width),height:Math.ceil(height)}};const send=()=>parent.postMessage({type:'quark:preview-metrics',...metrics()},'*');new ResizeObserver(send).observe(document.documentElement);if(document.body)new ResizeObserver(send).observe(document.body);addEventListener('load',send);setTimeout(send,300);setTimeout(send,1000);send();})();`;
+      const bridge = `(()=>{const style=document.createElement('style');style.textContent='[class~="rv"]{opacity:1!important;transform:none!important;transition:none!important}.dots span{opacity:1!important;transform:none!important}.dots button{min-width:26px}';document.head.appendChild(style);const metrics=()=>{const roots=[document.documentElement,document.body,document.querySelector('main'),document.querySelector('[data-page-instance]')].filter(Boolean);let width=0,height=0;for(const el of roots){const r=el.getBoundingClientRect();width=Math.max(width,el.scrollWidth||0,el.offsetWidth||0,r.right);height=Math.max(height,el.scrollHeight||0,el.offsetHeight||0,r.bottom);}document.body?.querySelectorAll('*').forEach(el=>{const r=el.getBoundingClientRect();width=Math.max(width,r.right,el.scrollWidth?el.getBoundingClientRect().left+el.scrollWidth:0);height=Math.max(height,r.bottom,el.scrollHeight?el.getBoundingClientRect().top+el.scrollHeight:0);});return {width:Math.ceil(width),height:Math.ceil(height)}};const send=()=>parent.postMessage({type:'quark:preview-metrics',...metrics()},'*');new ResizeObserver(send).observe(document.documentElement);if(document.body)new ResizeObserver(send).observe(document.body);addEventListener('load',send);setTimeout(send,300);setTimeout(send,1000);send();})();`;
       return compiled.replace("</body>", `<script>${bridge}</script></body>`);
     } catch {
       return "<p>页面暂不可预览</p>";
@@ -94,16 +97,38 @@ export function Preview({
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [interactive, mini, html]);
-  const fitWidth = Math.max(320, Math.min(contentWidth || Number(doc?.sourceSize?.width) || 1360, 2560));
+  const declaredWidth = Number(doc?.sourceSize?.width);
+  // A few early imports do not have a persisted sourceSize. In that case the
+  // runtime metric can be inflated by off-canvas artwork or fixed navigation
+  // and make the preview look like a tiny strip. Use the normal desktop canvas
+  // until a trusted imported size is available.
+  const fitWidth = Math.max(
+    320,
+    Math.min(
+      Number.isFinite(declaredWidth) && declaredWidth > 0
+        ? contentWidth || declaredWidth
+        : 1440,
+      2560,
+    ),
+  );
   const fitBaseHeight = Math.max(300, Math.min(Number(doc?.sourceSize?.height) || 765, 18000));
   const miniWidth = Math.max(320, Math.min(Number(miniViewportWidth) || 1000, 2560));
   const miniHeight = Math.max(300, Math.min(Number(miniViewportHeight) || 650, 18000));
   const fitHeight = Math.max(contentHeight || fitBaseHeight, fitBaseHeight);
   const fitScale = Math.min(1, width / fitWidth);
+  // Keep long interactive pages inside a real browser viewport. If the iframe
+  // is stretched to the full document height, `100vh`/`100svh` and fixed
+  // navigation inside the imported page are calculated against that huge
+  // height, which creates blank opening sections and breaks scroll-driven UI.
+  // The document can still be viewed in full by scrolling the iframe itself.
+  const interactiveViewportHeight = Math.max(
+    720,
+    Math.min(1200, Math.round(typeof window === "undefined" ? 900 : window.innerHeight)),
+  );
   const frameStyle = scrollable
     ? {
         width: fitWidth,
-        height: Math.max(contentHeight || fitBaseHeight, 720),
+        height: interactiveViewportHeight,
         transform: `scale(${fitScale})`,
         transformOrigin: "top left",
       }
@@ -149,7 +174,7 @@ export function Preview({
           className="preview-scroll-stage"
           style={{
             width: fitWidth * fitScale,
-            height: Math.max(contentHeight || fitBaseHeight, 720) * fitScale,
+            height: interactiveViewportHeight * fitScale,
           }}
         >
           {frame}
