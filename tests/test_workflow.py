@@ -720,7 +720,19 @@ def test_template_folder_and_zip_import(clients):
         ('files', ('demo/theme.css', b'h1{color:#123456}', 'text/css')),
     ]
     form = {'category_id': category['id'], 'input_mode': 'folder', 'template_name': 'QA 文件夹入库'}
-    assert clients['writer'].post('/templates/imports', files=files, data=form).status_code == 403
+    writer_form = {**form, 'template_name': 'QA 一般人员入库 ' + uuid.uuid4().hex[:6]}
+    writer_response = clients['writer'].post('/templates/imports', files=files, data=writer_form)
+    assert writer_response.status_code == 202, writer_response.text
+    writer_job = wait_job(clients['writer'], writer_response.json()[0]['id'])
+    assert writer_job['status'] == 'succeeded', writer_job.get('error')
+    writer_template_id = writer_job['result']['template_id']
+    try:
+        writer_template = next(t for t in clients['writer'].get('/templates').json() if t['id'] == writer_template_id)
+        assert writer_template['name'] == writer_form['template_name']
+        assert writer_template['created_by']['username'] == 'writer'
+        assert writer_template['updated_by']['username'] == 'writer'
+    finally:
+        admin.delete('/templates/' + writer_template_id)
     bad = admin.post('/templates/imports', files=[('files', ('../escape.html', b'<p>x</p>', 'text/html'))], data=form)
     assert bad.status_code == 422
     buf = io.BytesIO()

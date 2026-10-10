@@ -61,8 +61,33 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
   const canvas = useRef<HTMLDivElement>(null);
   const channel = useMemo(() => crypto.randomUUID(), [active]);
   const current = documents[active];
-  const width =
-    current?.layoutMode === "fixed" ? current.sourceSize.width : 1280;
+  const declaredWidth = Number(current?.sourceSize?.width);
+  const declaredHeight = Number(current?.sourceSize?.height);
+  const width = Math.max(320, Math.min(
+    Number.isFinite(declaredWidth) && declaredWidth > 0
+      ? declaredWidth
+      : current?.layoutMode === "fixed"
+        ? 1000
+        : 1280,
+    2560,
+  ));
+  const measuredHeight = Math.max(200, Math.min(height, 18000));
+  const naturalHeight = Math.max(
+    300,
+    Math.min(
+      Number.isFinite(declaredHeight) && declaredHeight > 0
+        ? declaredHeight
+        : measuredHeight,
+      18000,
+    ),
+  );
+  const browserViewportHeight = Math.max(
+    720,
+    Math.min(1100, Math.round(typeof window === "undefined" ? 900 : window.innerHeight - 180)),
+  );
+  const frameHeight = current?.layoutMode === "fixed"
+    ? naturalHeight
+    : Math.min(Math.max(naturalHeight, 720), browserViewportHeight);
   const scale = Math.min(1, canvasWidth / width);
   const preview = useMemo(
     () => editablePreview(current, channel),
@@ -386,7 +411,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
             <div
               style={{
                 width: width * scale,
-                height: height * scale,
+                height: frameHeight * scale,
                 position: "relative",
                 margin: "12px auto",
               }}
@@ -399,7 +424,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
                 style={{
                   border: 0,
                   width,
-                  height,
+                  height: frameHeight,
                   transform: `scale(${scale})`,
                   transformOrigin: "top left",
                   background: "white",

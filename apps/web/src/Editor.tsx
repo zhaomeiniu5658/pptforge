@@ -280,7 +280,7 @@ export function Editor() {
             <>
               <button onClick={() => setTemplate(true)}>
                 <Layers3 size={16} />
-                从部门模板库添加
+                从模板库添加
               </button>
               {settings?.ai_enabled !== false && (
                 <button className="primary" onClick={() => run(() => startAI())}>

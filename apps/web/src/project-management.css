@@ -82,6 +82,29 @@
   background: white;
   box-shadow: 0 2px 3px #243e6210;
 }
+.pm-panel-actions {
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+.pm-management-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.pm-category-sidebar {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafccc;
+}
+.pm-project-list {
+  min-width: 0;
+}
 .pm-categories-row {
   display: flex;
   align-items: center;
@@ -96,6 +119,11 @@
   gap: 7px;
   flex-wrap: wrap;
   flex: 1;
+}
+.pm-category-sidebar .pm-categories {
+  display: grid;
+  align-items: stretch;
+  gap: 7px;
 }
 .pm-category-label {
   display: flex;
@@ -119,6 +147,13 @@
   gap: 5px;
   line-height: 1.5;
 }
+.pm-category-sidebar .pm-categories button {
+  justify-content: flex-start;
+  width: 100%;
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: #64748b;
+}
 .pm-categories button.active {
   color: white;
   background: #2563eb;
@@ -132,6 +167,13 @@
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+.pm-categories button em {
+  margin-left: auto;
+  color: inherit;
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0.75;
 }
 .pm-primary-actions,
 .pm-filter-actions {
@@ -730,6 +772,21 @@
   }
   .pm-categories-row {
     align-items: flex-start;
+  }
+  .pm-management-layout {
+    grid-template-columns: 1fr;
+  }
+  .pm-category-sidebar {
+    position: static;
+  }
+  .pm-category-sidebar .pm-categories {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    flex-wrap: nowrap;
+  }
+  .pm-category-sidebar .pm-categories button {
+    width: auto;
   }
   .pm-primary-actions {
     margin-left: auto;

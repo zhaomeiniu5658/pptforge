@@ -17,7 +17,7 @@ export function TemplateCategoryFilter({
   const trigger = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const label = !selected.length
-    ? "全部分类"
+    ? "模板分类"
     : selected.length === 1
       ? categories.find((category) => category.id === selected[0])?.name ||
         "已选 1 类"

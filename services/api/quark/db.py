@@ -166,6 +166,12 @@ class Template(Row, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(30), default="draft")
     current_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    updated_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
 
 
 class TemplateVersion(Row, Base):

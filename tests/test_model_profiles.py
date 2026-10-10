@@ -3,7 +3,8 @@ import uuid
 import pytest
 from sqlalchemy import select, delete, update
 from fastapi.testclient import TestClient
-from quark.db import SessionLocal, ModelProfile
+from quark.db import SessionLocal, ModelProfile, User
+from quark.security import current_user
 from quark.model_profiles import cipher, resolve_model, load_model
 from test_workflow import clients, workspace
 
@@ -45,19 +46,28 @@ def test_image_routing_and_disabled_model(clients,workspace,profile,monkeypatch)
     from quark import main
     m,body=profile
     p,b,u=workspace
-    payload=dict(project_id=p['id'],booklet_id=b['id'],prompt='test',model_id=m['id'])
+    clients['admin'].patch('/settings', json={'ai_enabled': True})
+    writer_project = clients['writer'].get('/projects/' + p['id'])
+    assert writer_project.status_code == 200, writer_project.text
+    writer_booklet = writer_project.json()['booklets'][0]
+    payload=dict(project_id=p['id'],booklet_id=writer_booklet['id'],prompt='test',model_id=m['id'])
     # Use in-process HTTP for accepted dispatch so the real worker never calls a fake provider.
     monkeypatch.setattr(main,'dispatch',lambda db,user,kind,payload,pid:payload)
-    local=TestClient(main.app, base_url="http://127.0.0.1:8011")
-    local.cookies.update(clients['writer'].cookies)
-    r=local.post('/api/ai/tasks',json=payload)
-    assert r.status_code==202 and r.json()['model_id']==m['id']
-    assert 'secret-for-test' not in r.text
     with SessionLocal() as db:
-        with pytest.raises(ValueError,match='未启用图片'):
-            resolve_model(db,m['id'],True)
-    clients['admin'].put('/models/'+m['id'],json={**body,'enabled':False})
-    assert local.post('/api/ai/tasks',json=payload).status_code==422
+        writer_user = db.scalar(select(User).where(User.username == 'writer'))
+    main.app.dependency_overrides[current_user] = lambda: writer_user
+    try:
+        local=TestClient(main.app, base_url="http://127.0.0.1:8011")
+        r=local.post('/api/ai/tasks',json=payload)
+        assert r.status_code==202 and r.json()['model_id']==m['id']
+        assert 'secret-for-test' not in r.text
+        with SessionLocal() as db:
+            with pytest.raises(ValueError,match='未启用图片'):
+                resolve_model(db,m['id'],True)
+        clients['admin'].put('/models/'+m['id'],json={**body,'enabled':False})
+        assert local.post('/api/ai/tasks',json=payload).status_code==422
+    finally:
+        main.app.dependency_overrides.pop(current_user, None)
     assert all(x['id']!=m['id'] for x in clients['writer'].get('/models').json())
 
 

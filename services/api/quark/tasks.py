@@ -269,6 +269,8 @@ def execute(id):
                         department_id=p.get("department_id"),
                         shared=p.get("shared", True),
                         active=False,
+                        created_by_id=j.owner_id,
+                        updated_by_id=j.owner_id,
                     )
                     db.add(t)
                     db.flush()

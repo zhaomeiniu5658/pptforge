@@ -6,11 +6,13 @@ import { Modal, Field } from "./components";
 export function TemplateImportDialog({
   categories,
   departments,
+  user,
   onClose,
   onImported,
 }: {
   categories: { id: string; name: string; active: boolean }[];
   departments: { id: string; name: string }[];
+  user?: { role: string; department_id?: string | null };
   onClose: () => void;
   onImported: (jobs: any[]) => void;
 }) {
@@ -22,6 +24,10 @@ export function TemplateImportDialog({
   );
   const [department, setDepartment] = useState("");
   const [shared, setShared] = useState(true);
+  const visibleDepartments =
+    user?.role === "contributor"
+      ? departments.filter((department) => department.id === user.department_id)
+      : departments;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const size = files.reduce((sum, file) => sum + file.size, 0);
@@ -192,7 +198,7 @@ export function TemplateImportDialog({
               onChange={(e) => setDepartment(e.target.value)}
             >
               <option value="">平台公共资产</option>
-              {departments.map((d) => (
+              {visibleDepartments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
                 </option>

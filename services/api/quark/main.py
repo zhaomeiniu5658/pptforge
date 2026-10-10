@@ -17,7 +17,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 from sqlalchemy.exc import IntegrityError
 from .db import *
 from .security import *
@@ -27,9 +27,26 @@ from .seed import seed, document
 from .model_profiles import router as models_router, seed_env_model, resolve_model
 
 
+def ensure_runtime_columns():
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS templates "
+                "ADD COLUMN IF NOT EXISTS created_by_id VARCHAR(36)"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS templates "
+                "ADD COLUMN IF NOT EXISTS updated_by_id VARCHAR(36)"
+            )
+        )
+
+
 @asynccontextmanager
 async def lifespan(app):
     Base.metadata.create_all(bind=engine)
+    ensure_runtime_columns()
     seed()
     seed_env_model()
     yield
@@ -203,8 +220,12 @@ class UserIn(BaseModel):
 @app.post("/api/users")
 def create_user(b: UserIn, u=USER, db=DB):
     admin(u)
-    if b.department_id and not db.get(Department, b.department_id):
-        raise HTTPException(422, "部门不存在")
+    if "department_id" in b.model_fields_set or "shared" in b.model_fields_set:
+        candidate_department = (
+            b.department_id if "department_id" in b.model_fields_set else t.department_id
+        )
+        candidate_shared = b.shared if "shared" in b.model_fields_set else t.shared
+        normalize_template_scope(db, u, candidate_department, bool(candidate_shared))
     d = b.model_dump()
     password = d.pop("password")
     x = User(**d, password_hash=hash_password(password))
@@ -849,23 +870,78 @@ def submission(id: str, u=USER, db=DB):
     }
 
 
+def template_scope_clause(u):
+    return or_(Template.shared == True, Template.department_id == u.department_id)
+
+
+def template_has_active_category(db, t):
+    if not hasattr(db, "scalar") or not hasattr(t, "category_id"):
+        return False
+    return bool(
+        db.scalar(
+            select(Category).where(Category.id == t.category_id, Category.active == True)
+        )
+    )
+
+
 def template_visible_to_user(db, t, u):
     if not t or t.status == "deleted":
         return False
     if u.role == "admin":
         return True
+    template_department_id = getattr(t, "department_id", None)
+    user_department_id = getattr(u, "department_id", None)
+    if not (
+        getattr(t, "shared", False)
+        or (template_department_id is not None and template_department_id == user_department_id)
+        or getattr(t, "created_by_id", None) == u.id
+    ):
+        return False
+    if not template_has_active_category(db, t):
+        return False
     return (
-        t.active
+        getattr(t, "active", False)
         and t.status == "published"
-        and (t.shared or t.department_id == u.department_id)
-        and bool(
-            db.scalar(
-                select(Category).where(
-                    Category.id == t.category_id, Category.active == True
-                )
-            )
-        )
-    )
+    ) or getattr(t, "created_by_id", None) == u.id
+
+
+def template_manage_access(db, t, u):
+    if not t or t.status == "deleted":
+        raise HTTPException(404, "模板不存在")
+    if u.role == "admin":
+        return
+    if u.role != "contributor":
+        raise HTTPException(403, "无权管理模板")
+    template_department_id = getattr(t, "department_id", None)
+    user_department_id = getattr(u, "department_id", None)
+    if not (
+        getattr(t, "shared", False)
+        or (template_department_id is not None and template_department_id == user_department_id)
+        or getattr(t, "created_by_id", None) == u.id
+    ):
+        raise HTTPException(403, "只能修改公司共有模板或本部门模板")
+    if not template_has_active_category(db, t):
+        raise HTTPException(422, "模板分类已停用，暂不能修改")
+
+
+def normalize_template_scope(db, u, department_id, shared):
+    department_id = department_id or None
+    if department_id and not db.get(Department, department_id):
+        raise HTTPException(422, "部门不存在")
+    if u.role != "admin" and department_id and department_id != u.department_id:
+        raise HTTPException(403, "只能归属到公司共有模板或您的所属部门")
+    if u.role != "admin" and not shared and not department_id:
+        department_id = u.department_id
+    return department_id, shared
+
+
+def user_brief(db, user_id):
+    if not user_id:
+        return None
+    user = db.get(User, user_id)
+    if not user:
+        return None
+    return {"id": user.id, "name": user.name, "username": user.username}
 
 
 def template_out(db, t, include_documents=True):
@@ -881,6 +957,8 @@ def template_out(db, t, include_documents=True):
         "published": v.published if v else False,
         "document_count": len(v.documents) if v else 0,
         "has_content": bool(v and v.documents),
+        "created_by": user_brief(db, t.created_by_id),
+        "updated_by": user_brief(db, t.updated_by_id),
     }
 
 
@@ -889,16 +967,18 @@ def templates(summary: bool = False, u=USER, db=DB):
     q = select(Template).where(Template.status != "deleted").order_by(Template.created_at.desc())
     if u.role != "admin":
         q = q.where(
-            Template.active == True,
-            Template.status == "published",
-            or_(Template.shared == True, Template.department_id == u.department_id),
-            Template.category_id.in_(
-                select(Category.id).where(Category.active == True)
+            template_scope_clause(u),
+            Template.category_id.in_(select(Category.id).where(Category.active == True)),
+            or_(
+                Template.created_by_id == u.id,
+                Template.active == True,
+                Template.status == "published",
             ),
         )
     return [
         template_out(db, t, include_documents=not summary)
         for t in db.scalars(q)
+        if u.role == "admin" or template_visible_to_user(db, t, u)
     ]
 
 
@@ -1254,10 +1334,8 @@ class TemplateContentPatch(BaseModel):
 
 @app.patch("/api/templates/{id}")
 def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
-    admin(u)
     t = db.scalar(select(Template).where(Template.id == id).with_for_update())
-    if not t or t.status == "deleted":
-        raise HTTPException(404, "模板不存在")
+    template_manage_access(db, t, u)
     if "category_id" in b.model_fields_set:
         category = db.get(Category, b.category_id) if b.category_id else None
         if not category or (not category.active and b.category_id != t.category_id):
@@ -1267,10 +1345,19 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
     if "name" in b.model_fields_set and (b.name is None or not b.name.strip()):
         raise HTTPException(422, "模板标题不能为空")
     changes = b.model_dump(exclude_unset=True)
+    if u.role != "admin" and "active" in changes:
+        raise HTTPException(403, "启用或停用模板需要管理员权限")
     if "name" in changes:
         changes["name"] = changes["name"].strip()
-    if "department_id" in changes:
-        changes["department_id"] = changes["department_id"] or None
+    if "department_id" in changes or "shared" in changes:
+        normalized_department, normalized_shared = normalize_template_scope(
+            db,
+            u,
+            changes.get("department_id", t.department_id),
+            bool(changes.get("shared", t.shared)),
+        )
+        changes["department_id"] = normalized_department
+        changes["shared"] = normalized_shared
     for key in ("active", "shared"):
         if key in changes and changes[key] is None:
             raise HTTPException(422, "状态不能为空")
@@ -1284,6 +1371,8 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         t.status = "published"
     for k, v in changes.items():
         setattr(t, k, v)
+    if changes:
+        t.updated_by_id = u.id
     audit(
         db,
         u,
@@ -1292,15 +1381,13 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         {"fields": list(changes), "enabled_as_published": changes.get("active") is True},
     )
     db.commit()
-    return asdict(t)
+    return template_out(db, t, include_documents=False)
 
 
 @app.patch("/api/templates/{id}/content")
 def patch_template_content(id: str, b: TemplateContentPatch, u=USER, db=DB):
-    admin(u)
     t = db.scalar(select(Template).where(Template.id == id).with_for_update())
-    if not t or t.status == "deleted":
-        raise HTTPException(404, "模板不存在")
+    template_manage_access(db, t, u)
     if t.current_version_id != b.base_version_id:
         raise HTTPException(409, "模板内容已被其他操作更新，请重新载入后再保存")
     try:
@@ -1318,8 +1405,14 @@ def patch_template_content(id: str, b: TemplateContentPatch, u=USER, db=DB):
     db.add(version)
     db.flush()
     t.current_version_id = version.id
-    t.status = "draft"
-    t.active = False
+    t.updated_by_id = u.id
+    if u.role == "admin":
+        t.status = "draft"
+        t.active = False
+    else:
+        t.status = "published"
+        t.active = True
+        version.published = True
     audit(db, u, "template.content.update", t.id, {"version_id": version.id})
     db.commit()
     return {
@@ -1327,7 +1420,9 @@ def patch_template_content(id: str, b: TemplateContentPatch, u=USER, db=DB):
         "version_id": version.id,
         "documents": documents,
         "diagnostics": version.diagnostics,
-        "published": False,
+        "published": version.published,
+        "created_by": user_brief(db, t.created_by_id),
+        "updated_by": user_brief(db, t.updated_by_id),
     }
 
 
@@ -1346,6 +1441,8 @@ def duplicate_template(id: str, u=USER, db=DB):
         shared=source.shared,
         active=False,
         status="draft",
+        created_by_id=u.id,
+        updated_by_id=u.id,
     )
     db.add(copy)
     db.flush()
@@ -1373,6 +1470,7 @@ def delete_template(id: str, u=USER, db=DB):
     # Preserve source versions/assets for existing copies and historical submissions.
     t.status = "deleted"
     t.active = False
+    t.updated_by_id = u.id
     audit(db, u, "template.delete", id)
     db.commit()
     return {"ok": True}
@@ -1619,10 +1717,8 @@ class TemplateAIIn(BaseModel):
 @app.post("/api/templates/{id}/ai/tasks", status_code=202)
 def template_ai_task(id: str, b: TemplateAIIn, u=USER, db=DB):
     require_ai_enabled(db)
-    admin(u)
     t = db.get(Template, id)
-    if not t or t.status == "deleted":
-        raise HTTPException(404, "模板不存在")
+    template_manage_access(db, t, u)
     if t.current_version_id != b.base_version_id:
         raise HTTPException(409, "模板版本已变化，请重新载入后生成")
     if b.mode == "replace" and not b.document:
@@ -1705,7 +1801,6 @@ async def template_import(
     db=DB,
 ):
     from .importers import safe_path, ignored, archive_files, html_paths, MAX_UPLOAD_SIZE, MAX_FILES
-    admin(u)
     category = db.get(Category, category_id)
     if not category or not category.active:
         raise HTTPException(422, "请选择启用的模板分类")

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { Plus, Settings2 } from "lucide-react";
+import { Plus, Settings2, Trash2 } from "lucide-react";
 import { Context } from "./App";
 import { api } from "./api";
 import { Field, Modal, Empty } from "./components";
@@ -33,9 +33,11 @@ export function Models() {
   const { user, notify } = useContext(Context);
   const [models, setModels] = useState<any[]>([]);
   const [edit, setEdit] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState("");
   const [error, setError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [results, setResults] = useState<Record<string, string>>({});
   const load = () =>
     api("/models")
@@ -124,6 +126,17 @@ export function Models() {
                     >
                       {testing === m.id ? "测试中…" : "测试连接"}
                     </button>
+                    <button
+                      className="danger"
+                      disabled={busy || testing === m.id}
+                      onClick={() => {
+                        setDeleteError("");
+                        setDeleteTarget(m);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      删除
+                    </button>
                   </div>
                   {results[m.id] && (
                     <p className="model-test-result" role="status">
@@ -137,6 +150,62 @@ export function Models() {
         </table>
         {!models.length && <Empty>尚未添加模型</Empty>}
       </div>
+      {deleteTarget && (
+        <Modal
+          title="删除模型配置"
+          subtitle="删除后，新任务将不能再选择这个模型。"
+          onClose={() => {
+            if (!busy) setDeleteTarget(null);
+          }}
+        >
+          <div className="modal-body">
+            <p>确定删除「{deleteTarget.name}」吗？</p>
+            <p className="muted">
+              如果它是文字或图片默认模型，删除后需要重新设置默认模型，否则 AI 任务会提示未配置可用模型。
+            </p>
+            {deleteError && (
+              <p className="error" role="alert">
+                {deleteError}
+              </p>
+            )}
+          </div>
+          <footer className="modal-footer">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setDeleteTarget(null)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="danger"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setDeleteError("");
+                try {
+                  await api("/models/" + deleteTarget.id, undefined, "DELETE");
+                  setResults((current) => {
+                    const next = { ...current };
+                    delete next[deleteTarget.id];
+                    return next;
+                  });
+                  setDeleteTarget(null);
+                  await load();
+                  notify("模型配置已删除");
+                } catch (e: any) {
+                  setDeleteError(e.message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "正在删除…" : "确认删除"}
+            </button>
+          </footer>
+        </Modal>
+      )}
       {edit && (
         <Modal
           title={edit.id ? "编辑模型配置" : "新增模型"}

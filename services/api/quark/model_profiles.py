@@ -140,6 +140,19 @@ def edit_model(model_id: str, body: ModelIn, u=Depends(current_user), db=Depends
     return save_model(body, u, db, model_id)
 
 
+@router.delete('/{model_id}')
+def delete_model(model_id: str, u=Depends(current_user), db=Depends(db_session)):
+    admin(u)
+    db.execute(text("SELECT pg_advisory_xact_lock(71340219)"))
+    m = db.get(ModelProfile, model_id)
+    if not m:
+        raise HTTPException(404, '模型配置不存在')
+    audit(db, u, 'model.delete', m.id, {'name': m.name, 'provider': m.provider})
+    db.delete(m)
+    db.commit()
+    return {'ok': True}
+
+
 @router.post('/{model_id}/test')
 def test_model(model_id: str, u=Depends(current_user), db=Depends(db_session)):
     admin(u)

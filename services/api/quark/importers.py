@@ -289,17 +289,18 @@ def html_import(data, name, *, archive_remote=False, on_page=None):
         generated = tool("/internal/import-styles", {"html": original})["css"] if soup.find("script") else ""
         runtime_scripts = []
         inline_handlers = []
+        style_parts = []
         for link in soup.find_all("link"):
-            if "stylesheet" not in link.get("rel", []):
+            rel = link.get("rel", [])
+            rel_values = rel if isinstance(rel, list) else str(rel).split()
+            if "stylesheet" not in [str(value).lower() for value in rel_values]:
                 link.decompose()
                 continue
             found = load(link.get("href", ""), path)
             if found:
                 content, _, csspath = found
-                style = soup.new_tag("style")
-                style.string = css_assets(content.decode("utf-8-sig"), csspath)
-                link.replace_with(style)
-        style_parts = []
+                style_parts.append(css_assets(content.decode("utf-8-sig"), csspath))
+            link.decompose()
         for style in soup.find_all("style"):
             processed_css = css_assets(style.get_text() or "", path)
             style_parts.append(processed_css)

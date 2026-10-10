@@ -267,47 +267,50 @@ export function ProjectManagement() {
         </div>
       </section>
       <section className="pm-panel" aria-label="项目管理">
-        <div className="pm-categories-row">
-          <div className="pm-categories">
+        <div className="pm-primary-actions pm-panel-actions">
+          <button
+            disabled={!selected.length}
+            onClick={() =>
+              openExport(projects.filter((p) => selected.includes(p.id)))
+            }
+          >
+            <Download size={14} />
+            批量导出{selected.length ? ` (${selected.length})` : ""}
+          </button>
+          {(user.role === "business" || user.role === "admin") && (
+            <Link className="button primary" to="/projects/new">
+              <Plus size={15} />
+              新建项目
+            </Link>
+          )}
+        </div>
+        <div className="pm-management-layout">
+          <aside className="pm-category-sidebar" aria-label="项目分类">
             <span className="pm-category-label">
               <Tag size={14} />
-              项目分类:
+              项目分类
             </span>
-            <button
-              className={!category ? "active" : ""}
-              onClick={() => selectCategory("")}
-            >
-              全部 ({projects.length})
-            </button>
-            {categories.map((f) => (
+            <div className="pm-categories">
               <button
-                key={f}
-                className={category === f ? "active" : ""}
-                onClick={() => selectCategory(f)}
+                className={!category ? "active" : ""}
+                onClick={() => selectCategory("")}
               >
-                <i style={{ background: color(f) }} />
-                {f} ({projects.filter((p) => p.field === f).length})
+                全部 ({projects.length})
               </button>
-            ))}
-          </div>
-          <div className="pm-primary-actions">
-            <button
-              disabled={!selected.length}
-              onClick={() =>
-                openExport(projects.filter((p) => selected.includes(p.id)))
-              }
-            >
-              <Download size={14} />
-              批量导出{selected.length ? ` (${selected.length})` : ""}
-            </button>
-            {(user.role === "business" || user.role === "admin") && (
-              <Link className="button primary" to="/projects/new">
-                <Plus size={15} />
-                新建项目
-              </Link>
-            )}
-          </div>
-        </div>
+              {categories.map((f) => (
+                <button
+                  key={f}
+                  className={category === f ? "active" : ""}
+                  onClick={() => selectCategory(f)}
+                >
+                  <i style={{ background: color(f) }} />
+                  <span>{f}</span>
+                  <em>{projects.filter((p) => p.field === f).length}</em>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <div className="pm-project-list">
         <form
           className="pm-filters"
           onSubmit={(e) => {
@@ -603,6 +606,8 @@ export function ProjectManagement() {
             >
               <ChevronRight size={14} />
             </button>
+          </div>
+        </div>
           </div>
         </div>
       </section>

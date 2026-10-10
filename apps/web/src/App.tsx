@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -52,8 +52,8 @@ import { Editor } from "./Editor";
 import { Models } from "./Models";
 import { ProjectManagement } from "./ProjectManagement";
 import { TemplateImportDialog } from "./TemplateImportDialog";
-import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
 import { TemplateContentEditor } from "./TemplateContentEditor";
+import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
 import { PptSchemeLibrary } from "./PptSchemeLibrary";
 import "./style.css";
 export const Context = React.createContext<any>(null);
@@ -195,7 +195,7 @@ function Shell() {
       <Login
         onLogin={(u: any) => {
           setUser(u);
-          nav("/");
+          nav(u.role === "contributor" ? "/projects" : "/");
         }}
       />
     );
@@ -203,7 +203,7 @@ function Shell() {
     <Context.Provider value={{ user, notify: setNotice, run, settings, setSettings }}>
       <div className="app">
         <header className="topbar">
-          <Link className="brand" to="/">
+          <Link className="brand" to={user.role === "contributor" ? "/projects" : "/"}>
             <Layers3 size={28} />
             <strong>Quarkmed</strong>
             <span>夸克医药</span>
@@ -221,12 +221,17 @@ function Shell() {
                   ["/people", "组织与人员"],
                   ...(settings.ai_enabled ? [["/models", "模型配置"]] : []),
                 ]
-              : [
-                  ["/", "我的工作台"],
-                  ["/projects", "项目管理"],
-                  ["/templates", "部门模板库"],
-                  ["/ppt-schemes", "PPT 方案库"],
-                ]
+              : user.role === "contributor"
+                ? [
+                    ["/projects", "项目管理"],
+                    ["/templates", "模板库"],
+                  ]
+                : [
+                    ["/", "我的工作台"],
+                    ["/projects", "项目管理"],
+                    ["/templates", "模板库"],
+                    ["/ppt-schemes", "PPT 方案库"],
+                  ]
             ).map(([url, label]) => (
               <Link
                 key={url}
@@ -284,13 +289,27 @@ function Shell() {
           </div>
         </header>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route
+            path="/"
+            element={
+              user.role === "contributor" ? <Navigate to="/projects" /> : <Dashboard />
+            }
+          />
           <Route path="/projects" element={<ProjectManagement />} />
           <Route path="/projects/new" element={<Wizard />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/booklets/:id" element={<Editor />} />
           <Route path="/templates" element={<Templates />} />
-          <Route path="/ppt-schemes" element={<PptSchemeLibrary />} />
+          <Route
+            path="/ppt-schemes"
+            element={
+              user.role === "contributor" ? (
+                <Navigate to="/projects" />
+              ) : (
+                <PptSchemeLibrary />
+              )
+            }
+          />
           <Route path="/categories" element={<Categories />} />
           <Route path="/people" element={<People />} />
           <Route
@@ -1365,7 +1384,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
   const [chosen, setChosen] = useState<string[]>([]);
   return (
     <Modal
-      title="从部门模板库添加"
+      title="从模板库添加"
       subtitle="选择专业模板，专注核心内容。导入后将创建独立页面副本。"
       wide
       onClose={onClose}
@@ -1537,6 +1556,7 @@ function Templates() {
   const [cats] = useLoad("/template-categories");
   const [deps] = useLoad("/departments");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState("all");
   const [q, setQ] = useState("");
   const [ingest, setIngest] = useState(false);
   const [detail, setDetail] = useState<any>(null);
@@ -1552,12 +1572,83 @@ function Templates() {
   const [schemeMode, setSchemeMode] = useState(false);
   const [downloadSelection, setDownloadSelection] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const visibleCategories = (cats || []).filter(
+    (category: any) => user.role === "admin" || category.active,
+  );
+  const departmentGroups = useMemo(() => {
+    const rows = deps || [];
+    const idsBy = (patterns: RegExp[]) =>
+      rows
+        .filter((department: any) =>
+          patterns.some((pattern) => pattern.test(department.name || "")),
+        )
+        .map((department: any) => department.id);
+
+    const publicIds = idsBy([/公司公共|公共|夸克医药|综合管理|总经办|行政/]);
+    const medicalIds = idsBy([/医学|研发医学/]);
+    const statisticsIds = idsBy([/统计|数统|生物统计/]);
+    const radiationIds = idsBy([/辐射|剂量/]);
+    const clinicalIds = idsBy([/临床运营|临床/]);
+    const qualityIds = idsBy([/质量|QA|QC/i]);
+    const registerIds = idsBy([/注册|法规/]);
+    const businessIds = idsBy([/商务|BD|市场/i]);
+    const namedIds = [
+      ...publicIds,
+      ...medicalIds,
+      ...statisticsIds,
+      ...radiationIds,
+      ...clinicalIds,
+      ...qualityIds,
+      ...registerIds,
+      ...businessIds,
+    ];
+
+    return [
+      { id: "all", name: "全部部门", match: () => true },
+      {
+        id: "public",
+        name: "公司公共",
+        match: (template: any) =>
+          !template.department_id ||
+          template.shared ||
+          publicIds.includes(template.department_id),
+      },
+      { id: "medical", name: "医学", ids: medicalIds },
+      { id: "statistics", name: "统计学", ids: statisticsIds },
+      { id: "radiation", name: "辐射剂量学", ids: radiationIds },
+      { id: "clinical", name: "临床运营", ids: clinicalIds },
+      { id: "quality", name: "质量管理", ids: qualityIds },
+      { id: "register", name: "注册法规", ids: registerIds },
+      { id: "business", name: "商务", ids: businessIds },
+      {
+        id: "other",
+        name: "其他",
+        match: (template: any) =>
+          Boolean(template.department_id) && !namedIds.includes(template.department_id),
+      },
+    ];
+  }, [deps]);
+  const selectedDepartment =
+    departmentGroups.find((group: any) => group.id === selectedDepartmentGroup) ||
+    departmentGroups[0];
+  const departmentMatch = (template: any, group: any = selectedDepartment) =>
+    group?.match
+      ? group.match(template)
+      : group?.ids
+        ? group.ids.includes(template.department_id)
+        : true;
+  const departmentCount = (group: any) =>
+    (templates || []).filter((template: any) => departmentMatch(template, group))
+      .length;
   const filteredTemplates = templates?.filter(
     (t: any) =>
+      departmentMatch(t) &&
       t.name.includes(q) &&
       (!selectedCategories.length ||
         selectedCategories.includes(t.category_id)),
   );
+  const canUploadTemplates = user.role === "admin" || user.role === "contributor";
+  const canEditTemplates = user.role === "admin" || user.role === "contributor";
   async function openTemplateDetail(template: any) {
     try {
       setDetail(await api(`/templates/${template.id}`));
@@ -1628,33 +1719,37 @@ function Templates() {
     <main className="main">
       <Heading
         eyebrow="PROFESSIONAL ASSET LIBRARY"
-        title={user.role === "admin" ? "PPT 模板资产库" : "部门模板库"}
+        title={user.role === "admin" ? "PPT 模板资产库" : "模板库"}
         description="可复用的医学视觉资产，为每一次专业表达提供标准起点。"
       >
-        {user.role === "admin" && (
+        {canUploadTemplates && (
           <div className="heading-actions">
-            <button
-              className={downloadMode ? "button selected" : "button"}
-              onClick={() => {
-                setDownloadMode((value) => !value);
-                setSchemeMode(false);
-                setDownloadSelection([]);
-              }}
-            >
-              <Download size={16} />
-              {downloadMode ? "取消批量下载" : "批量下载"}
-            </button>
-            <button
-              className={schemeMode ? "button selected" : "button"}
-              onClick={() => {
-                setSchemeMode((value) => !value);
-                setDownloadMode(false);
-                setDownloadSelection([]);
-              }}
-            >
-              <Layers3 size={16} />
-              {schemeMode ? "取消组合方案" : "组合成方案"}
-            </button>
+            {user.role === "admin" && (
+              <button
+                className={downloadMode ? "button selected" : "button"}
+                onClick={() => {
+                  setDownloadMode((value) => !value);
+                  setSchemeMode(false);
+                  setDownloadSelection([]);
+                }}
+              >
+                <Download size={16} />
+                {downloadMode ? "取消批量下载" : "批量下载"}
+              </button>
+            )}
+            {user.role === "admin" && (
+              <button
+                className={schemeMode ? "button selected" : "button"}
+                onClick={() => {
+                  setSchemeMode((value) => !value);
+                  setDownloadMode(false);
+                  setDownloadSelection([]);
+                }}
+              >
+                <Layers3 size={16} />
+                {schemeMode ? "取消组合方案" : "组合成方案"}
+              </button>
+            )}
             <button
               className="primary"
               onClick={() => {
@@ -1668,7 +1763,27 @@ function Templates() {
         )}
       </Heading>
       <div className="panel template-library-panel">
-        <div className="filter-bar library-filter-bar">
+        <div className="template-library-layout">
+          <aside className="template-category-sidebar" aria-label="部门分类">
+            <div className="template-category-sidebar-title">部门分类</div>
+            <div className="template-category-sidebar-list compact">
+              {departmentGroups.map((group: any) => (
+                <button
+                  type="button"
+                  key={group.id}
+                  className={
+                    selectedDepartmentGroup === group.id ? "selected" : ""
+                  }
+                  onClick={() => setSelectedDepartmentGroup(group.id)}
+                >
+                  <span>{group.name}</span>
+                  <em>{departmentCount(group)}</em>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <div className="template-library-content">
+            <div className="filter-bar library-filter-bar">
           <span className="muted">
             共 {filteredTemplates?.length || 0} 套模板
           </span>
@@ -1703,7 +1818,7 @@ function Templates() {
           )}
           <div className="library-filter-controls">
             <TemplateCategoryFilter
-              categories={cats || []}
+              categories={visibleCategories}
               selected={selectedCategories}
               onChange={setSelectedCategories}
             />
@@ -1717,8 +1832,8 @@ function Templates() {
               />
             </div>
           </div>
-        </div>
-        <div className="template-grid library-grid">
+            </div>
+            <div className="template-grid library-grid">
           {filteredTemplates?.map((t: any) => (
             <article className="template-card" key={t.id}>
               <button
@@ -1758,6 +1873,10 @@ function Templates() {
                   )}
                 </TemplateCardPreview>
                 <h3>{t.name}</h3>
+                <p className="template-card-meta">
+                  上传：{t.created_by?.name || "—"}
+                  {t.updated_by?.name ? ` · 修改：${t.updated_by.name}` : ""}
+                </p>
               </button>
               <div className="template-card-bottom">
                 <div className="template-card-actions">
@@ -1789,7 +1908,7 @@ function Templates() {
                       <Copy size={16} />
                     </button>
                   )}
-                  {user.role === "admin" && (
+                  {canEditTemplates && (
                     <>
                       <button
                         className="template-icon-button"
@@ -1816,56 +1935,63 @@ function Templates() {
                       >
                         <Palette size={16} />
                       </button>
-                      <button
-                        className="template-icon-button danger-icon"
-                        data-tooltip="删除"
-                        aria-label={`删除模板 ${t.name}`}
-                        onClick={() => {
-                          setDeleteError("");
-                          setDeleteTarget(t);
-                        }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                      <button
-                        className={
-                          "template-switch " + (t.active ? "on" : "off")
-                        }
-                        role="switch"
-                        aria-checked={t.active}
-                        data-tooltip={t.active ? "停用" : "启用"}
-                        aria-label={t.active ? "停用模板" : "启用模板"}
-                        onClick={() =>
-                          run(async () => {
-                            await api(
-                              `/templates/${t.id}`,
-                              { active: !t.active },
-                              "PATCH",
-                            );
-                            reload();
-                            notify(t.active ? "模板已停用" : "模板已启用");
-                          })
-                        }
-                      >
-                        <span className="template-switch-track">
-                          <span className="template-switch-knob" />
-                        </span>
-                      </button>
+                      {user.role === "admin" && (
+                        <button
+                          className="template-icon-button danger-icon"
+                          data-tooltip="删除"
+                          aria-label={`删除模板 ${t.name}`}
+                          onClick={() => {
+                            setDeleteError("");
+                            setDeleteTarget(t);
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {user.role === "admin" && (
+                        <button
+                          className={
+                            "template-switch " + (t.active ? "on" : "off")
+                          }
+                          role="switch"
+                          aria-checked={t.active}
+                          data-tooltip={t.active ? "停用" : "启用"}
+                          aria-label={t.active ? "停用模板" : "启用模板"}
+                          onClick={() =>
+                            run(async () => {
+                              await api(
+                                `/templates/${t.id}`,
+                                { active: !t.active },
+                                "PATCH",
+                              );
+                              reload();
+                              notify(t.active ? "模板已停用" : "模板已启用");
+                            })
+                          }
+                        >
+                          <span className="template-switch-track">
+                            <span className="template-switch-knob" />
+                          </span>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
               </div>
             </article>
           ))}
+            </div>
+            {filteredTemplates?.length === 0 && (
+              <Empty>没有符合筛选条件的模板</Empty>
+            )}
+          </div>
         </div>
-        {filteredTemplates?.length === 0 && (
-          <Empty>没有符合筛选条件的模板</Empty>
-        )}
       </div>
       {ingest && (
         <TemplateImportDialog
           categories={cats || []}
           departments={deps || []}
+          user={user}
           onClose={() => setIngest(false)}
           onImported={(jobs) => {
             setIngest(false);
@@ -1918,6 +2044,8 @@ function Templates() {
               {deps?.find((d: any) => d.id === detail.department_id)?.name ||
                 "平台公共资产"}
               {detail.shared ? " · 跨部门共享" : " · 部门专属"}
+              {detail.created_by?.name ? ` · 上传：${detail.created_by.name}` : ""}
+              {detail.updated_by?.name ? ` · 修改：${detail.updated_by.name}` : ""}
             </p>
           </footer>
         </Modal>
@@ -2000,11 +2128,13 @@ function Templates() {
                   }
                 >
                   <option value="">平台公共资产</option>
-                  {deps?.map((d: any) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
+                  {deps
+                    ?.filter((d: any) => user.role === "admin" || d.id === user.department_id)
+                    .map((d: any) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
                 </select>
               </Field>
               <label className="checkbox">
@@ -2332,11 +2462,13 @@ function People() {
                   }
                 >
                   <option value="">顶级部门</option>
-                  {deps?.map((d: any) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
+                  {deps
+                    ?.filter((d: any) => user.role === "admin" || d.id === user.department_id)
+                    .map((d: any) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
                 </select>
               </Field>
             </div>
