@@ -11,6 +11,7 @@ import {
   Undo2,
   ArrowLeft,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import {
   normalize,
@@ -38,7 +39,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
   const { settings } = useApp();
   const [documents, setDocuments] = useState<any[]>(() =>
     template.documents.length
-      ? template.documents.map((d: any) => normalize(d))
+      ? [normalize(template.documents[0])]
       : [blank()],
   );
   const [active, setActive] = useState(0);
@@ -52,6 +53,8 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmImport, setConfirmImport] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMounted, setAiMounted] = useState(false);
   const [aiMode, setAiMode] = useState<"append" | "replace">("append");
@@ -61,6 +64,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
   const [canvasWidth, setCanvasWidth] = useState(700);
   const iframe = useRef<HTMLIFrameElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
+  const importInput = useRef<HTMLInputElement>(null);
   const channel = useMemo(() => crypto.randomUUID(), [active]);
   const current = documents[active];
   const declaredWidth = Number(current?.sourceSize?.width);
@@ -230,7 +234,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
     try {
       const result = await api(
         `/templates/${template.id}/content`,
-        { documents, base_version_id: template.current_version_id },
+        { documents: [documents[0]], base_version_id: template.current_version_id },
         "PATCH",
       );
       onSaved(result);
@@ -238,6 +242,31 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+  const importMaterial = async (files: FileList | null) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+    setImporting(true);
+    setError("");
+    try {
+      const form = new FormData();
+      selectedFiles.forEach((file) => form.append("files", file, file.name));
+      form.append("input_mode", "files");
+      const result = await api("/templates/parse", form);
+      const next = normalize(result.documents?.[0]);
+      if (!next) throw Error("未解析出可用页面");
+      change([next]);
+      setActive(0);
+      setSelected(null);
+      setText("");
+      setLinkUrl("");
+      setStyles({});
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setImporting(false);
+      if (importInput.current) importInput.current.value = "";
     }
   };
   const completeOptimization = async () => {
@@ -264,6 +293,21 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
         <div className="grow"><h1>设计模板 · {template.name}</h1>
           <p>点击画布元素修改文字、图片和样式；保存新版本后重新启用即可使用。</p></div>
         <div className="template-design-actions">
+          <button
+            className="button"
+            disabled={saving || importing || source !== null}
+            onClick={() => setConfirmImport(true)}
+          >
+            <Upload size={15} />
+            {importing ? "导入中…" : "导入"}
+          </button>
+          <input
+            ref={importInput}
+            type="file"
+            accept=".pptx,.html,.htm,.zip"
+            hidden
+            onChange={(event) => importMaterial(event.target.files)}
+          />
           {needsOptimization && (
             <button
               className="button template-optimization-complete-button"
@@ -314,42 +358,13 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               change(documents.map((d, i) => i === index ? incoming[0] : d));
               setActive(index);
             } else {
-              if (documents.length + incoming.length > 60) throw Error("模板最多支持 60 页");
-              change([...documents, ...incoming]);
-              setActive(documents.length);
+              change([incoming[0]]);
+              setActive(0);
             }
             setSelected(null);
           }} />
       </div>}
       <div className="template-content-editor">
-        <aside className="template-content-pages">
-          <b>页面 · {documents.length}</b>
-          {documents.map((_: any, index: number) => (
-            <button
-              disabled={saving || source !== null}
-              key={index}
-              className={active === index ? "selected" : ""}
-              onClick={() => {
-                setActive(index);
-                setSelected(null);
-                setError("");
-              }}
-            >
-              第 {index + 1} 页
-            </button>
-          ))}
-          <button
-            disabled={saving || source !== null || documents.length >= 60}
-            onClick={() => {
-              change([...documents, blank()]);
-              setActive(documents.length);
-              setSelected(null);
-            }}
-          >
-            <Plus size={14} />
-            添加页面
-          </button>
-        </aside>
         <section className="template-content-workspace">
           <div className="template-design-toolbar">
             <button
@@ -366,50 +381,15 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               <Undo2 size={14} />
               撤销
             </button>
-            <button
-              disabled={saving || source !== null || (!selected && documents.length >= 60)}
-              onClick={() => {
-                if (selected) {
-                  duplicateSelected();
-                  return;
-                }
-                const next = [...documents];
-                next.splice(active + 1, 0, structuredClone(current));
-                change(next);
-                setActive(active + 1);
-                setSelected(null);
-              }}
-            >
-              <Copy size={14} />
-              {selected ? "复制元素" : "复制页面"}
-            </button>
-            <button
-              aria-label="上移页面"
-              disabled={saving || source !== null || !active}
-              onClick={() => move(-1)}
-            >
-              <ArrowUp size={14} />
-            </button>
-            <button
-              aria-label="下移页面"
-              disabled={
-                saving || source !== null || active === documents.length - 1
-              }
-              onClick={() => move(1)}
-            >
-              <ArrowDown size={14} />
-            </button>
-            <button
-              disabled={saving || source !== null || documents.length === 1}
-              onClick={() => {
-                change(documents.filter((_, index) => index !== active));
-                setActive(Math.max(0, active - 1));
-                setSelected(null);
-              }}
-            >
-              <Trash2 size={14} />
-              删除页
-            </button>
+            {selected && (
+              <button
+                disabled={saving || source !== null}
+                onClick={duplicateSelected}
+              >
+                <Copy size={14} />
+                复制元素
+              </button>
+            )}
             <button
               disabled={saving || source !== null}
               onClick={() => setSource(sourceOf(current))}
@@ -691,6 +671,21 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               setSelected(null);
             }} />
         </aside>
+      )}
+      {confirmImport && (
+        <footer className="modal-footer template-import-confirm">
+          <span className="grow">导入材料将替换当前页面，是否继续？</span>
+          <button onClick={() => setConfirmImport(false)}>取消</button>
+          <button
+            className="primary"
+            onClick={() => {
+              setConfirmImport(false);
+              importInput.current?.click();
+            }}
+          >
+            继续导入
+          </button>
+        </footer>
       )}
       {error && (
         <p className="error template-edit-error" role="alert">

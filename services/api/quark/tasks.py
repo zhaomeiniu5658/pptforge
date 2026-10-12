@@ -261,6 +261,13 @@ def execute(id):
                         {**d, "message": f"第 {ix + 1} 页：{d['message']}"}
                         for ix, doc in enumerate(docs) for d in doc.get("diagnostics", [])
                     ]
+                if j.kind == "template_import":
+                    docs = docs[:1]
+                    diagnostics = [
+                        d for d in diagnostics
+                        if not str(d.get("message", "")).startswith("第 ")
+                        or str(d.get("message", "")).startswith("第 1 页")
+                    ]
                 if j.kind in ("pptx_import", "template_import"):
                     stage(db, j, "保存待检查模板")
                     t = Template(

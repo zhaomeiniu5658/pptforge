@@ -4,16 +4,14 @@
   padding: 20px 24px 28px;
   color: #334155;
 }
-.pm-hero {
+.pm-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px;
-  border: 1px solid #dbeafe;
-  border-radius: 16px;
-  background: linear-gradient(100deg, #eff6ff 0%, #f5f7ff80 55%, #fff 100%);
-  box-shadow: 0 2px 3px #243e6210;
-  margin-bottom: 16px;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
 }
 .pm-hero-copy {
   display: flex;
@@ -31,49 +29,15 @@
   border: 1px solid #dbeafe;
   box-shadow: 0 3px 7px #2563eb12;
 }
-.pm-hero h1 {
+.pm-panel-header h1 {
   font-size: 24px;
   letter-spacing: -0.4px;
   color: #1e293b;
 }
-.pm-hero p {
+.pm-panel-header p {
   font-size: 12px;
   color: #7c8ca3;
   margin-top: 4px;
-}
-.pm-deck {
-  width: 80px;
-  height: 56px;
-  background: linear-gradient(130deg, #3b82f6, #2563eb);
-  border-radius: 12px;
-  transform: rotate(-3deg);
-  color: white;
-  padding: 10px;
-  box-shadow: 0 6px 15px #2563eb30;
-}
-.pm-deck b {
-  display: block;
-  font-size: 7px;
-  letter-spacing: 1px;
-  opacity: 0.85;
-}
-.pm-deck div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 5px;
-}
-.pm-deck span {
-  background: #ffffff30;
-  border-radius: 4px;
-  padding: 0 5px;
-  font-size: 12px;
-}
-.pm-deck i {
-  width: 24px;
-  height: 4px;
-  background: #ffffff60;
-  border-radius: 4px;
 }
 .pm-panel {
   padding: 20px;
@@ -84,7 +48,7 @@
 }
 .pm-panel-actions {
   justify-content: flex-end;
-  margin-bottom: 14px;
+  margin-left: auto;
 }
 .pm-management-layout {
   display: grid;
@@ -758,13 +722,11 @@
   .pm-panel {
     padding: 12px;
   }
-  .pm-deck {
-    display: none;
+  .pm-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
-  .pm-hero {
-    padding: 18px;
-  }
-  .pm-hero h1 {
+  .pm-panel-header h1 {
     font-size: 22px;
   }
   .pm-filter-inputs {
@@ -790,5 +752,9 @@
   }
   .pm-primary-actions {
     margin-left: auto;
+  }
+  .pm-panel-header .pm-primary-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }

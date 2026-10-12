@@ -563,6 +563,17 @@ td small {
   margin-top: 7px;
   font-size: 11px;
 }
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.button.small {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
 .row-title {
   font-weight: 600;
   color: #233653;
@@ -1083,6 +1094,16 @@ td small {
 .template-icon-button.danger-icon {
   color: #d75a6c;
 }
+.template-icon-button.optimization-pending {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #f59e0b;
+}
+.template-icon-button.optimization-completed {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
 .template-switch {
   width: 43px;
   height: 24px;
@@ -1200,7 +1221,7 @@ td small {
 }
 .template-content-editor {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: min(650px, calc(100vh - 250px));
   overflow: hidden;
   background: #f5f7fb;
@@ -1523,7 +1544,7 @@ td small {
   .template-design-page { padding: 16px; }
   .template-design-header { flex-wrap: wrap; }
   .template-ai-head span { display: none; }
-  .template-design-page .template-content-editor { grid-template-columns: 110px minmax(0, 1fr); }
+  .template-design-page .template-content-editor { grid-template-columns: minmax(0, 1fr); }
   .template-design-page .template-content-workspace { grid-template-columns: minmax(0, 1fr) 240px; }
   .template-ai-layout { grid-template-columns: 280px minmax(0, 1fr); }
 }

@@ -139,8 +139,7 @@ export function TemplateImportDialog({
             />
           </div>
           <p className="muted">
-            单次上传总计不超过 32 MB；文件夹最多 500 个文件。一个文件夹或 ZIP
-            导入为一套多页模板。
+            单次上传总计不超过 32 MB；文件夹最多 500 个文件。模板库仅保留第一个页面；多个单页模板可在 PPT 方案库组合。
           </p>
           {!!files.length && (
             <div className="template-import-selection">

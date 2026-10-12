@@ -985,10 +985,18 @@ def template_out(db, t, include_documents=True, viewer=None):
     )
     optimization_requested = False
     optimization_request_count = 0
+    latest_completion = latest_template_optimization_completion(db, t.id)
     if viewer:
         optimization_request_count = active_template_optimization_count(db, t.id)
         if viewer.role == "contributor":
             optimization_requested = active_template_optimization_count(db, t.id, viewer.id) > 0
+    optimization_status = (
+        "pending"
+        if optimization_request_count > 0
+        else "completed"
+        if latest_completion is not None
+        else "none"
+    )
     return {
         **asdict(t),
         "documents": v.documents if v and include_documents else [],
@@ -1000,6 +1008,8 @@ def template_out(db, t, include_documents=True, viewer=None):
         "updated_by": user_brief(db, t.updated_by_id),
         "optimization_requested_by_me": optimization_requested,
         "optimization_request_count": optimization_request_count,
+        "optimization_status": optimization_status,
+        "optimization_completed_at": latest_completion.isoformat() if latest_completion else None,
         "needs_optimization": optimization_request_count > 0,
     }
 
@@ -1876,6 +1886,73 @@ def html_import(b: ImportIn, u=USER, db=DB):
     bk = booklet_access(db, u, b.booklet_id, True)
     allowed_asset(db, u, db.get(Asset, b.asset_id))
     return dispatch(db, u, "html_import", b.model_dump(), bk.project_id)
+
+
+@app.post("/api/templates/parse")
+async def parse_template_material(
+    files: list[UploadFile] = File(...),
+    input_mode: Literal["files", "folder"] = Form("files"),
+    u=USER,
+):
+    from .importers import safe_path, ignored, archive_files, html_paths, html_import, MAX_UPLOAD_SIZE, MAX_FILES
+
+    if len(files) > (MAX_FILES if input_mode == "folder" else 10):
+        raise HTTPException(422, "文件夹最多 500 个文件；批量导入最多 10 个文件/压缩包")
+    uploads = []
+    total = 0
+    seen = set()
+    try:
+        for f in files:
+            name = safe_path(f.filename or "")
+            data = await f.read(MAX_UPLOAD_SIZE + 1)
+            total += len(data)
+            if total > MAX_UPLOAD_SIZE:
+                raise HTTPException(413, "本次上传总大小超过 32 MB")
+            if input_mode == "folder":
+                if ignored(name):
+                    continue
+                if name in seen:
+                    raise ValueError("文件夹包含重复路径")
+                seen.add(name)
+            else:
+                name = Path(name).name
+                if not name.lower().endswith((".pptx", ".html", ".htm", ".zip")):
+                    raise ValueError("支持 PPTX、HTML、ZIP；带资源的页面请选择整个文件夹或 ZIP")
+                if name.lower().endswith(".zip"):
+                    html_paths(archive_files(data))
+            uploads.append((name, data))
+        if not uploads:
+            raise ValueError("请选择可导入的文件")
+        if input_mode == "folder":
+            html_paths(dict(uploads))
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for name, data in uploads:
+                    z.writestr(name, data)
+            folder_name = uploads[0][0].split("/")[0]
+            uploads = [(folder_name + ".zip", buf.getvalue())]
+
+        documents = []
+        diagnostics = []
+        for name, data in uploads:
+            if name.lower().endswith(".pptx"):
+                from .pptx_converter import convert
+
+                docs, notes = convert(data)
+            else:
+                docs = html_import(data, name, archive_remote=True)
+                notes = [
+                    {**d, "message": f"第 {ix + 1} 页：{d['message']}"}
+                    for ix, doc in enumerate(docs)
+                    for d in doc.get("diagnostics", [])
+                ]
+            documents.extend(docs)
+            diagnostics.extend(notes)
+    except (ValueError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if not documents:
+        raise HTTPException(422, "未解析出可用页面")
+    return {"documents": documents, "diagnostics": diagnostics}
 
 
 @app.post("/api/templates/imports", status_code=202)

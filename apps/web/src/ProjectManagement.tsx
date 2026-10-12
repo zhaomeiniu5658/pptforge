@@ -248,41 +248,34 @@ export function ProjectManagement() {
   }
   return (
     <main className="pm-page">
-      <section className="pm-hero">
-        <div className="pm-hero-copy">
-          <span className="pm-folder">
-            <Folder size={30} />
-          </span>
-          <div>
-            <h1>项目管理</h1>
-            <p>管理和复用项目方案，快速创建专业内容，提升工作效率。</p>
-          </div>
-        </div>
-        <div className="pm-deck" aria-hidden="true">
-          <b>PRESENTATION</b>
-          <div>
-            <span>P</span>
-            <i />
-          </div>
-        </div>
-      </section>
       <section className="pm-panel" aria-label="项目管理">
-        <div className="pm-primary-actions pm-panel-actions">
-          <button
-            disabled={!selected.length}
-            onClick={() =>
-              openExport(projects.filter((p) => selected.includes(p.id)))
-            }
-          >
-            <Download size={14} />
-            批量导出{selected.length ? ` (${selected.length})` : ""}
-          </button>
-          {(user.role === "business" || user.role === "admin") && (
-            <Link className="button primary" to="/projects/new">
-              <Plus size={15} />
-              新建项目
-            </Link>
-          )}
+        <div className="pm-panel-header">
+          <div className="pm-hero-copy">
+            <span className="pm-folder">
+              <Folder size={30} />
+            </span>
+            <div>
+              <h1>项目管理</h1>
+              <p>管理和复用项目方案，快速创建专业内容，提升工作效率。</p>
+            </div>
+          </div>
+          <div className="pm-primary-actions pm-panel-actions">
+            <button
+              disabled={!selected.length}
+              onClick={() =>
+                openExport(projects.filter((p) => selected.includes(p.id)))
+              }
+            >
+              <Download size={14} />
+              批量导出{selected.length ? ` (${selected.length})` : ""}
+            </button>
+            {(user.role === "business" || user.role === "admin") && (
+              <Link className="button primary" to="/projects/new">
+                <Plus size={15} />
+                新建项目
+              </Link>
+            )}
+          </div>
         </div>
         <div className="pm-management-layout">
           <aside className="pm-category-sidebar" aria-label="项目分类">

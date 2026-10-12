@@ -253,7 +253,6 @@ function Shell() {
                   ]
                 : [
                     ["/projects", "项目管理"],
-                    ["/templates", "模板库"],
                   ]
             ).map(([url, label]) => (
               <Link
@@ -322,7 +321,12 @@ function Shell() {
           <Route path="/projects/new" element={<Wizard />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/booklets/:id" element={<Editor />} />
-          <Route path="/templates" element={<Templates />} />
+          <Route
+            path="/templates"
+            element={
+              user.role === "business" ? <Navigate to="/projects" /> : <Templates />
+            }
+          />
           <Route
             path="/ppt-schemes"
             element={
@@ -473,8 +477,9 @@ function Heading({ eyebrow, title, description, children }: any) {
   );
 }
 function Dashboard() {
-  const { user } = useApp();
-  const [d] = useLoad("/dashboard");
+  const { user, run, notify } = useApp();
+  const [d, reloadDashboard] = useLoad("/dashboard");
+  const [completingOptimizationId, setCompletingOptimizationId] = useState("");
   if (!d) return <div className="loading">载入工作台…</div>;
   const ps = d.projects;
   const mine = ps.flatMap((p: any) =>
@@ -562,7 +567,22 @@ function Dashboard() {
         </Link>
       </div>
       {user.role === "admin" ? (
-        <TemplateOptimizationTable requests={d.template_optimization_requests || []} />
+        <TemplateOptimizationTable
+          requests={d.template_optimization_requests || []}
+          completingId={completingOptimizationId}
+          onComplete={(templateId: string) =>
+            run(async () => {
+              setCompletingOptimizationId(templateId);
+              try {
+                await api(`/templates/${templateId}/optimize-complete`, {}, "POST");
+                notify("已标记模板优化完成");
+                await reloadDashboard();
+              } finally {
+                setCompletingOptimizationId("");
+              }
+            })
+          }
+        />
       ) : user.role === "contributor" ? (
         <div className="task-grid">
           {mine.map((b: any) => (
@@ -613,7 +633,7 @@ function Dashboard() {
     </main>
   );
 }
-function TemplateOptimizationTable({ requests }: any) {
+function TemplateOptimizationTable({ requests, completingId, onComplete }: any) {
   return (
     <div className="table-wrap">
       <table>
@@ -650,7 +670,17 @@ function TemplateOptimizationTable({ requests }: any) {
                 </td>
                 <td>{date(item.requested_at)}</td>
                 <td>
-                  <Link to="/templates">查看模板 →</Link>
+                  <div className="table-actions">
+                    <Link to="/templates">查看模板 →</Link>
+                    <button
+                      className="button small"
+                      disabled={completingId === template.id}
+                      onClick={() => onComplete(template.id)}
+                    >
+                      <CheckCircle2 size={14} />
+                      {completingId === template.id ? "处理中…" : "标记完成"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
@@ -1761,6 +1791,33 @@ function Templates() {
     (user.role === "business" && template.created_by?.id === user.id);
   const canRequestOptimization = (template: any) =>
     user.role === "contributor" && template.created_by?.id === user.id;
+  const optimizationButtonState = (template: any) => {
+    if (template.optimization_status === "pending" || template.optimization_requested_by_me) {
+      return {
+        key: "pending",
+        tooltip: "等待优化",
+        label: "等待协助优化",
+        disabled: true,
+        icon: <Clock3 size={16} />,
+      };
+    }
+    if (template.optimization_status === "completed") {
+      return {
+        key: "completed",
+        tooltip: "优化完成",
+        label: "已完成优化",
+        disabled: true,
+        icon: <CheckCircle2 size={16} />,
+      };
+    }
+    return {
+      key: "none",
+      tooltip: "协助优化",
+      label: "申请协助优化",
+      disabled: false,
+      icon: <Sparkles size={16} />,
+    };
+  };
   async function openTemplateDetail(template: any) {
     try {
       setDetail(await api(`/templates/${template.id}`));
@@ -2079,30 +2136,20 @@ function Templates() {
                       >
                         <Palette size={16} />
                       </button>
-                      {canRequestOptimization(t) && (
-                        <button
-                          className="template-icon-button"
-                          data-tooltip={
-                            t.optimization_requested_by_me ? "已申请优化" : "协助优化"
-                          }
-                          aria-label={
-                            (t.optimization_requested_by_me
-                              ? "已申请协助优化"
-                              : "申请协助优化") + ` ${t.name}`
-                          }
-                          disabled={
-                            Boolean(t.optimization_requested_by_me) ||
-                            optimizingTemplateId === t.id
-                          }
-                          onClick={() => requestOptimization(t)}
-                        >
-                          {t.optimization_requested_by_me ? (
-                            <CheckCircle2 size={16} />
-                          ) : (
-                            <Sparkles size={16} />
-                          )}
-                        </button>
-                      )}
+                      {canRequestOptimization(t) && (() => {
+                        const state = optimizationButtonState(t);
+                        return (
+                          <button
+                            className={`template-icon-button optimization-${state.key}`}
+                            data-tooltip={state.tooltip}
+                            aria-label={`${state.label} ${t.name}`}
+                            disabled={state.disabled || optimizingTemplateId === t.id}
+                            onClick={() => requestOptimization(t)}
+                          >
+                            {optimizingTemplateId === t.id ? <Clock3 size={16} /> : state.icon}
+                          </button>
+                        );
+                      })()}
                       {user.role === "admin" && (
                         <button
                           className="template-icon-button danger-icon"

@@ -337,7 +337,13 @@ def test_official_export_uses_approved_snapshot(clients, workspace):
 def test_template_copy_library_and_order(clients, workspace):
     p, b, u = workspace
     c = clients["writer"]
-    t = c.get("/templates").json()[0]
+    t = next(
+        x
+        for x in c.get("/templates").json()
+        if x["active"]
+        and x["status"] == "published"
+        and (x["shared"] or x["department_id"] == u["writer"]["department_id"])
+    )
     r = c.post("/booklets/" + b["id"] + "/templates", json={"template_ids": [t["id"]]})
     assert r.status_code == 200, r.text
     book = r.json()
@@ -510,6 +516,7 @@ def test_contributor_can_request_own_template_optimization_once(clients):
         own = next(t for t in writer.get("/templates").json() if t["id"] == tid)
         assert own["created_by"]["username"] == "writer"
         assert own["optimization_requested_by_me"] is False
+        assert own["optimization_status"] == "none"
         assert stat.post(f"/templates/{tid}/optimize-request", json={}).status_code == 403
         assert admin.post(f"/templates/{tid}/optimize-request", json={}).status_code == 403
 
@@ -533,6 +540,7 @@ def test_contributor_can_request_own_template_optimization_once(clients):
 
         own_after = next(t for t in writer.get("/templates").json() if t["id"] == tid)
         assert own_after["optimization_requested_by_me"] is True
+        assert own_after["optimization_status"] == "pending"
         duplicate = writer.post(f"/templates/{tid}/optimize-request", json={})
         assert duplicate.status_code == 200, duplicate.text
         assert duplicate.json()["duplicate"] is True
@@ -551,8 +559,10 @@ def test_contributor_can_request_own_template_optimization_once(clients):
         )
         assert admin_template_after_complete["needs_optimization"] is False
         assert admin_template_after_complete["optimization_request_count"] == 0
+        assert admin_template_after_complete["optimization_status"] == "completed"
         own_completed = next(t for t in writer.get("/templates").json() if t["id"] == tid)
         assert own_completed["optimization_requested_by_me"] is False
+        assert own_completed["optimization_status"] == "completed"
         requested_again = writer.post(f"/templates/{tid}/optimize-request", json={})
         assert requested_again.status_code == 200, requested_again.text
         assert requested_again.json()["duplicate"] is False
@@ -563,12 +573,17 @@ def test_contributor_can_request_own_template_optimization_once(clients):
                 Audit.entity_id == tid,
                 Audit.action == "template.optimize.request",
             )))
-            assert len(audits) == 1
+            assert len(audits) == 2
+            completed = list(db.scalars(select(Audit).where(
+                Audit.entity_id == tid,
+                Audit.action == "template.optimize.complete",
+            )))
+            assert len(completed) == 1
             notifications = list(db.scalars(select(Notification).where(
                 Notification.message.contains("申请管理员协助优化模板"),
                 Notification.message.contains(own_after["name"]),
             )))
-            assert len(notifications) == admin_count
+            assert len(notifications) == admin_count * 2
     finally:
         assert admin.delete("/templates/" + tid).status_code == 200
 
