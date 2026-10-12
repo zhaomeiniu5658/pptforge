@@ -910,16 +910,20 @@ def template_manage_access(db, t, u):
         raise HTTPException(404, "模板不存在")
     if u.role == "admin":
         return
-    if u.role != "contributor":
+    if u.role == "business":
+        if getattr(t, "created_by_id", None) != u.id:
+            raise HTTPException(403, "只能管理自己新增的模板")
+    elif u.role != "contributor":
         raise HTTPException(403, "无权管理模板")
-    template_department_id = getattr(t, "department_id", None)
-    user_department_id = getattr(u, "department_id", None)
-    if not (
-        getattr(t, "shared", False)
-        or (template_department_id is not None and template_department_id == user_department_id)
-        or getattr(t, "created_by_id", None) == u.id
-    ):
-        raise HTTPException(403, "只能修改公司共有模板或本部门模板")
+    else:
+        template_department_id = getattr(t, "department_id", None)
+        user_department_id = getattr(u, "department_id", None)
+        if not (
+            getattr(t, "shared", False)
+            or (template_department_id is not None and template_department_id == user_department_id)
+            or getattr(t, "created_by_id", None) == u.id
+        ):
+            raise HTTPException(403, "只能修改公司共有模板或本部门模板")
     if not template_has_active_category(db, t):
         raise HTTPException(422, "模板分类已停用，暂不能修改")
 
@@ -935,6 +939,35 @@ def normalize_template_scope(db, u, department_id, shared):
     return department_id, shared
 
 
+
+def latest_template_optimization_completion(db, template_id):
+    return db.scalar(
+        select(Audit.created_at)
+        .where(
+            Audit.entity_id == template_id,
+            Audit.action == "template.optimize.complete",
+        )
+        .order_by(Audit.created_at.desc())
+        .limit(1)
+    )
+
+
+def active_template_optimization_count(db, template_id, actor_id=None):
+    completed_at = latest_template_optimization_completion(db, template_id)
+    query = (
+        select(func.count())
+        .select_from(Audit)
+        .where(
+            Audit.entity_id == template_id,
+            Audit.action == "template.optimize.request",
+        )
+    )
+    if completed_at is not None:
+        query = query.where(Audit.created_at > completed_at)
+    if actor_id:
+        query = query.where(Audit.actor_id == actor_id)
+    return db.scalar(query) or 0
+
 def user_brief(db, user_id):
     if not user_id:
         return None
@@ -944,12 +977,18 @@ def user_brief(db, user_id):
     return {"id": user.id, "name": user.name, "username": user.username}
 
 
-def template_out(db, t, include_documents=True):
+def template_out(db, t, include_documents=True, viewer=None):
     v = (
         db.get(TemplateVersion, t.current_version_id)
         if t.current_version_id
         else None
     )
+    optimization_requested = False
+    optimization_request_count = 0
+    if viewer:
+        optimization_request_count = active_template_optimization_count(db, t.id)
+        if viewer.role == "contributor":
+            optimization_requested = active_template_optimization_count(db, t.id, viewer.id) > 0
     return {
         **asdict(t),
         "documents": v.documents if v and include_documents else [],
@@ -959,6 +998,9 @@ def template_out(db, t, include_documents=True):
         "has_content": bool(v and v.documents),
         "created_by": user_brief(db, t.created_by_id),
         "updated_by": user_brief(db, t.updated_by_id),
+        "optimization_requested_by_me": optimization_requested,
+        "optimization_request_count": optimization_request_count,
+        "needs_optimization": optimization_request_count > 0,
     }
 
 
@@ -976,7 +1018,7 @@ def templates(summary: bool = False, u=USER, db=DB):
             ),
         )
     return [
-        template_out(db, t, include_documents=not summary)
+        template_out(db, t, include_documents=not summary, viewer=u)
         for t in db.scalars(q)
         if u.role == "admin" or template_visible_to_user(db, t, u)
     ]
@@ -987,7 +1029,7 @@ def get_template(id: str, u=USER, db=DB):
     t = db.get(Template, id)
     if not template_visible_to_user(db, t, u):
         raise HTTPException(404, "模板不存在或不可用")
-    return template_out(db, t, include_documents=True)
+    return template_out(db, t, include_documents=True, viewer=u)
 
 
 class PptSchemeIn(BaseModel):
@@ -1381,7 +1423,7 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         {"fields": list(changes), "enabled_as_published": changes.get("active") is True},
     )
     db.commit()
-    return template_out(db, t, include_documents=False)
+    return template_out(db, t, include_documents=False, viewer=u)
 
 
 @app.patch("/api/templates/{id}/content")
@@ -1492,6 +1534,53 @@ def publish(id: str, u=USER, db=DB):
     audit(db, u, "template.publish", id)
     db.commit()
     return asdict(t)
+
+
+@app.post("/api/templates/{id}/optimize-request")
+def request_template_optimization(id: str, u=USER, db=DB):
+    t = db.get(Template, id)
+    if not t or t.status == "deleted":
+        raise HTTPException(404, "模板不存在")
+    if u.role != "contributor" or t.created_by_id != u.id:
+        raise HTTPException(403, "只能为自己上传的模板申请协助优化")
+    existing = active_template_optimization_count(db, t.id, u.id) > 0
+    if existing:
+        return {"ok": True, "requested": True, "duplicate": True, "notified": 0}
+    admins = list(
+        db.scalars(
+            select(User).where(User.role == "admin", User.active == True)
+        )
+    )
+    message = f"{u.name} 申请管理员协助优化模板《{t.name}》"
+    for admin_user in admins:
+        db.add(Notification(user_id=admin_user.id, message=message))
+    audit(
+        db,
+        u,
+        "template.optimize.request",
+        t.id,
+        {"template_name": t.name, "notified_admins": [x.id for x in admins]},
+    )
+    db.commit()
+    return {"ok": True, "requested": True, "duplicate": False, "notified": len(admins)}
+
+
+@app.post("/api/templates/{id}/optimize-complete")
+def complete_template_optimization(id: str, u=USER, db=DB):
+    admin(u)
+    t = db.scalar(select(Template).where(Template.id == id).with_for_update())
+    if not t or t.status == "deleted":
+        raise HTTPException(404, "模板不存在")
+    active_count = active_template_optimization_count(db, t.id)
+    audit(
+        db,
+        u,
+        "template.optimize.complete",
+        t.id,
+        {"template_name": t.name, "completed_requests": active_count},
+    )
+    db.commit()
+    return {"ok": True, "completed": active_count}
 
 
 class TemplateImportIn(BaseModel):
@@ -1804,8 +1893,7 @@ async def template_import(
     category = db.get(Category, category_id)
     if not category or not category.active:
         raise HTTPException(422, "请选择启用的模板分类")
-    if department_id and not db.get(Department, department_id):
-        raise HTTPException(422, "部门不存在")
+    department_id, shared = normalize_template_scope(db, u, department_id, shared)
     if len(files) > (MAX_FILES if input_mode == "folder" else 10):
         raise HTTPException(422, "文件夹最多 500 个文件；批量导入最多 10 个文件/压缩包")
     if len(template_name) > 200:
@@ -2080,9 +2168,45 @@ def read_notifications(u=USER, db=DB):
     return {"ok": True}
 
 
+def template_optimization_request_rows(db):
+    rows = []
+    events = db.scalars(
+        select(Audit)
+        .where(Audit.action == "template.optimize.request")
+        .order_by(Audit.created_at.desc())
+        .limit(200)
+    )
+    for event in events:
+        template = db.get(Template, event.entity_id)
+        if not template or template.status == "deleted":
+            continue
+        completed_at = latest_template_optimization_completion(db, template.id)
+        if completed_at is not None and event.created_at <= completed_at:
+            continue
+        if any(row["template"]["id"] == template.id for row in rows):
+            continue
+        rows.append(
+            {
+                "id": event.id,
+                "requested_at": event.created_at.isoformat(),
+                "template": template_out(db, template, include_documents=False),
+                "category": asdict(db.get(Category, template.category_id))
+                if template.category_id and db.get(Category, template.category_id)
+                else None,
+                "department": asdict(db.get(Department, template.department_id))
+                if template.department_id and db.get(Department, template.department_id)
+                else None,
+                "requester": user_brief(db, event.actor_id),
+                "details": event.details or {},
+            }
+        )
+    return rows
+
+
 @app.get("/api/dashboard")
 def dashboard(u=USER, db=DB):
     ps = projects(u, db)
+    optimization_requests = template_optimization_request_rows(db) if u.role == "admin" else []
     return {
         "projects": ps,
         "schemes": db.scalar(
@@ -2101,6 +2225,8 @@ def dashboard(u=USER, db=DB):
         "pending_templates": db.scalar(
             select(func.count()).select_from(Template).where(Template.status == "draft")
         ),
+        "template_optimization_requests": optimization_requests,
+        "template_optimization_request_count": len(optimization_requests),
         "model_configured": bool(db.scalar(select(ModelProfile.id).where(ModelProfile.enabled == True).limit(1))),
     }
 

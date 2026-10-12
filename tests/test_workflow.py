@@ -471,6 +471,108 @@ def test_admin_can_edit_template_metadata_and_content(clients):
         assert admin.delete("/templates/" + tid).status_code == 200
 
 
+def test_contributor_can_request_own_template_optimization_once(clients):
+    from quark.db import Audit, Category, Notification, Template, TemplateVersion, User
+    from quark.seed import document
+
+    writer = clients["writer"]
+    stat = clients["stat"]
+    admin = clients["admin"]
+    with SessionLocal() as db:
+        category = db.scalar(select(Category).where(Category.active == True))
+        writer_user = db.scalar(select(User).where(User.username == "writer"))
+        admin_users = list(db.scalars(select(User).where(User.role == "admin", User.active == True)))
+        template = Template(
+            name="QA 协助优化 " + uuid.uuid4().hex[:6],
+            category_id=category.id,
+            department_id=writer_user.department_id,
+            shared=False,
+            active=True,
+            status="published",
+            created_by_id=writer_user.id,
+            updated_by_id=writer_user.id,
+        )
+        db.add(template)
+        db.flush()
+        version = TemplateVersion(
+            template_id=template.id,
+            documents=[document("申请协助优化")],
+            published=True,
+        )
+        db.add(version)
+        db.flush()
+        template.current_version_id = version.id
+        db.commit()
+        tid = template.id
+        admin_count = len(admin_users)
+
+    try:
+        own = next(t for t in writer.get("/templates").json() if t["id"] == tid)
+        assert own["created_by"]["username"] == "writer"
+        assert own["optimization_requested_by_me"] is False
+        assert stat.post(f"/templates/{tid}/optimize-request", json={}).status_code == 403
+        assert admin.post(f"/templates/{tid}/optimize-request", json={}).status_code == 403
+
+        requested = writer.post(f"/templates/{tid}/optimize-request", json={})
+        assert requested.status_code == 200, requested.text
+        assert requested.json()["requested"] is True
+        assert requested.json()["duplicate"] is False
+        assert requested.json()["notified"] == admin_count
+
+        dashboard = admin.get("/dashboard")
+        assert dashboard.status_code == 200, dashboard.text
+        optimization_rows = dashboard.json()["template_optimization_requests"]
+        row = next(x for x in optimization_rows if x["template"]["id"] == tid)
+        assert row["template"]["name"].startswith("QA 协助优化")
+        assert row["requester"]["username"] == "writer"
+        assert row["department"] is not None
+        assert dashboard.json()["template_optimization_request_count"] >= 1
+        notices = admin.get("/notifications")
+        assert notices.status_code == 200, notices.text
+        assert any(row["template"]["name"] in n["message"] for n in notices.json())
+
+        own_after = next(t for t in writer.get("/templates").json() if t["id"] == tid)
+        assert own_after["optimization_requested_by_me"] is True
+        duplicate = writer.post(f"/templates/{tid}/optimize-request", json={})
+        assert duplicate.status_code == 200, duplicate.text
+        assert duplicate.json()["duplicate"] is True
+
+        complete = admin.post(f"/templates/{tid}/optimize-complete", json={})
+        assert complete.status_code == 200, complete.text
+        assert complete.json()["completed"] == 1
+        dashboard_after_complete = admin.get("/dashboard")
+        assert dashboard_after_complete.status_code == 200, dashboard_after_complete.text
+        assert all(
+            x["template"]["id"] != tid
+            for x in dashboard_after_complete.json()["template_optimization_requests"]
+        )
+        admin_template_after_complete = next(
+            t for t in admin.get("/templates").json() if t["id"] == tid
+        )
+        assert admin_template_after_complete["needs_optimization"] is False
+        assert admin_template_after_complete["optimization_request_count"] == 0
+        own_completed = next(t for t in writer.get("/templates").json() if t["id"] == tid)
+        assert own_completed["optimization_requested_by_me"] is False
+        requested_again = writer.post(f"/templates/{tid}/optimize-request", json={})
+        assert requested_again.status_code == 200, requested_again.text
+        assert requested_again.json()["duplicate"] is False
+
+        with SessionLocal() as db:
+            audits = list(db.scalars(select(Audit).where(
+                Audit.actor_id == own_after["created_by"]["id"],
+                Audit.entity_id == tid,
+                Audit.action == "template.optimize.request",
+            )))
+            assert len(audits) == 1
+            notifications = list(db.scalars(select(Notification).where(
+                Notification.message.contains("申请管理员协助优化模板"),
+                Notification.message.contains(own_after["name"]),
+            )))
+            assert len(notifications) == admin_count
+    finally:
+        assert admin.delete("/templates/" + tid).status_code == 200
+
+
 def test_html_import_candidate_does_not_overwrite(clients, workspace):
     p, b, u = workspace
     c = clients["writer"]
@@ -733,6 +835,29 @@ def test_template_folder_and_zip_import(clients):
         assert writer_template['updated_by']['username'] == 'writer'
     finally:
         admin.delete('/templates/' + writer_template_id)
+    business_form = {**form, 'template_name': 'QA 商务人员入库 ' + uuid.uuid4().hex[:6]}
+    business_response = clients['bd'].post('/templates/imports', files=files, data=business_form)
+    assert business_response.status_code == 202, business_response.text
+    business_job = wait_job(clients['bd'], business_response.json()[0]['id'])
+    assert business_job['status'] == 'succeeded', business_job.get('error')
+    business_template_id = business_job['result']['template_id']
+    try:
+        business_template = next(t for t in clients['bd'].get('/templates').json() if t['id'] == business_template_id)
+        assert business_template['name'] == business_form['template_name']
+        assert business_template['created_by']['username'] == 'bd'
+        rename = clients['bd'].patch('/templates/' + business_template_id, json={'name': business_form['template_name'] + ' 已改'})
+        assert rename.status_code == 200, rename.text
+        departments = admin.get('/departments').json()
+        bd_department_id = clients['bd'].get('/me').json()['department_id']
+        other_department = next(d for d in departments if d['id'] != bd_department_id)
+        forbidden = clients['bd'].post(
+            '/templates/imports',
+            files=files,
+            data={**business_form, 'department_id': other_department['id']},
+        )
+        assert forbidden.status_code == 403
+    finally:
+        admin.delete('/templates/' + business_template_id)
     bad = admin.post('/templates/imports', files=[('files', ('../escape.html', b'<p>x</p>', 'text/html'))], data=form)
     assert bad.status_code == 422
     buf = io.BytesIO()

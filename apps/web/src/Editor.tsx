@@ -282,7 +282,7 @@ export function Editor() {
                 <Layers3 size={16} />
                 从模板库添加
               </button>
-              {settings?.ai_enabled !== false && (
+              {settings?.ai_enabled === true && (
                 <button className="primary" onClick={() => run(() => startAI())}>
                   <Sparkles size={16} />
                   AI 生成页面
@@ -748,7 +748,7 @@ export function Editor() {
                   </div>
                 )}
               </div>
-              {settings?.ai_enabled !== false && (
+              {settings?.ai_enabled === true && (
                 <div className="property-section">
                   <div className="ai-hint">
                     <Sparkles size={21} />
@@ -938,7 +938,7 @@ export function Editor() {
           }
         />
       )}{" "}
-      {ai && settings?.ai_enabled !== false && (
+      {ai && settings?.ai_enabled === true && (
         <AIDesigner
           booklet={b}
           page={ai.replace ? page : null}

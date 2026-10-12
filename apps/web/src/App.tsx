@@ -37,6 +37,7 @@ import {
   Trash2,
   Settings,
   Copy,
+  Star,
 } from "lucide-react";
 import { api, downloadFile, roleNames, statusNames, date, remaining } from "./api";
 import {
@@ -148,14 +149,36 @@ function Login({ onLogin }: any) {
     </div>
   );
 }
+const cachedSettings = () => {
+  if (typeof window === "undefined") return { ai_enabled: false, loaded: false };
+  try {
+    const raw = window.localStorage.getItem("quark-platform-settings");
+    if (raw) return { ...JSON.parse(raw), loaded: false };
+  } catch {}
+  return { ai_enabled: false, loaded: false };
+};
+const persistSettings = (value: any) => {
+  try {
+    window.localStorage.setItem(
+      "quark-platform-settings",
+      JSON.stringify({ ai_enabled: value?.ai_enabled !== false }),
+    );
+  } catch {}
+};
+
 function Shell() {
   const [user, setUser] = useState<any>(null);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [notifications, setNotifications] = useState<any[] | null>(null);
-  const [settings, setSettings] = useState<any>({ ai_enabled: true });
+  const [settings, setSettingsState] = useState<any>(() => cachedSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const setSettings = (next: any) => {
+    const normalized = { ...next, ai_enabled: next?.ai_enabled !== false, loaded: true };
+    persistSettings(normalized);
+    setSettingsState(normalized);
+  };
   const nav = useNavigate();
   const loc = useLocation();
   useEffect(() => {
@@ -166,7 +189,9 @@ function Shell() {
   }, []);
   useEffect(() => {
     if (!user) return;
-    api("/settings").then(setSettings).catch(() => {});
+    api("/settings").then(setSettings).catch(() => {
+      setSettingsState((current: any) => ({ ...current, loaded: true }));
+    });
     const load = () =>
       api("/notifications").then((x) =>
         setUnread(x.filter((n: any) => !n.read).length),
@@ -203,7 +228,7 @@ function Shell() {
     <Context.Provider value={{ user, notify: setNotice, run, settings, setSettings }}>
       <div className="app">
         <header className="topbar">
-          <Link className="brand" to={user.role === "contributor" ? "/projects" : "/"}>
+          <Link className="brand" to={user.role === "admin" ? "/" : "/projects"}>
             <Layers3 size={28} />
             <strong>Quarkmed</strong>
             <span>夸克医药</span>
@@ -219,7 +244,7 @@ function Shell() {
                   ["/projects", "项目管理"],
                   ["/categories", "模板分类"],
                   ["/people", "组织与人员"],
-                  ...(settings.ai_enabled ? [["/models", "模型配置"]] : []),
+                  ...(settings.ai_enabled === true ? [["/models", "模型配置"]] : []),
                 ]
               : user.role === "contributor"
                 ? [
@@ -227,10 +252,8 @@ function Shell() {
                     ["/templates", "模板库"],
                   ]
                 : [
-                    ["/", "我的工作台"],
                     ["/projects", "项目管理"],
                     ["/templates", "模板库"],
-                    ["/ppt-schemes", "PPT 方案库"],
                   ]
             ).map(([url, label]) => (
               <Link
@@ -292,7 +315,7 @@ function Shell() {
           <Route
             path="/"
             element={
-              user.role === "contributor" ? <Navigate to="/projects" /> : <Dashboard />
+              user.role === "admin" ? <Dashboard /> : <Navigate to="/projects" />
             }
           />
           <Route path="/projects" element={<ProjectManagement />} />
@@ -303,10 +326,10 @@ function Shell() {
           <Route
             path="/ppt-schemes"
             element={
-              user.role === "contributor" ? (
-                <Navigate to="/projects" />
-              ) : (
+              user.role === "admin" ? (
                 <PptSchemeLibrary />
+              ) : (
+                <Navigate to="/projects" />
               )
             }
           />
@@ -314,7 +337,7 @@ function Shell() {
           <Route path="/people" element={<People />} />
           <Route
             path="/models"
-            element={settings.ai_enabled ? <Models /> : <Navigate to="/" />}
+            element={settings.ai_enabled === true ? <Models /> : <Navigate to="/" />}
           />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="*" element={<Navigate to="/" />} />
@@ -367,8 +390,11 @@ export function useApp() {
 }
 function PlatformSettingsModal({ value, onClose, onSave }: any) {
   const { run, notify } = useApp();
-  const [aiEnabled, setAiEnabled] = useState(value.ai_enabled !== false);
+  const [aiEnabled, setAiEnabled] = useState(value.ai_enabled === true);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setAiEnabled(value.ai_enabled === true);
+  }, [value.ai_enabled]);
   return (
     <Modal
       title="平台设置"
@@ -490,7 +516,7 @@ function Dashboard() {
               [d.schemes || 0, "方案库", Layers3],
               [d.templates || 0, "模版库", LayoutGrid],
               [ps.length, "项目总数", FolderOpen],
-              [ps.filter((p: any) => p.status === "active").length, "进行中项目", ShieldCheck],
+              [d.template_optimization_request_count || 0, "需要协助优化的PPT模板", ShieldCheck],
             ]
           : [
               [ps.length, "参与项目", FolderOpen],
@@ -530,12 +556,14 @@ function Dashboard() {
         ))}
       </section>
       <div className="section-head">
-        <h2>{user.role === "contributor" ? "我的分册任务" : "进行中的项目"}</h2>
-        <Link to="/projects">
+        <h2>{user.role === "contributor" ? "我的分册任务" : user.role === "admin" ? "需要协助优化的PPT模板" : "进行中的项目"}</h2>
+        <Link to={user.role === "admin" ? "/templates" : "/projects"}>
           查看全部 <ArrowRight size={14} />
         </Link>
       </div>
-      {user.role === "contributor" ? (
+      {user.role === "admin" ? (
+        <TemplateOptimizationTable requests={d.template_optimization_requests || []} />
+      ) : user.role === "contributor" ? (
         <div className="task-grid">
           {mine.map((b: any) => (
             <article className="task-card" key={b.id}>
@@ -585,6 +613,55 @@ function Dashboard() {
     </main>
   );
 }
+function TemplateOptimizationTable({ requests }: any) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>模板名称 / 申请人</th>
+            <th>模板范围</th>
+            <th>分类</th>
+            <th>上传 / 修改</th>
+            <th>申请时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {requests.map((item: any) => {
+            const template = item.template || {};
+            return (
+              <tr key={item.id}>
+                <td>
+                  <Link className="row-title" to="/templates">
+                    {template.name}
+                  </Link>
+                  <small>{item.requester?.name || "—"} 申请协助优化</small>
+                </td>
+                <td>
+                  <span className="category-tag">
+                    {template.shared ? "公司公共" : item.department?.name || "未指定部门"}
+                  </span>
+                </td>
+                <td>{item.category?.name || "—"}</td>
+                <td>
+                  {template.created_by?.name || "—"}
+                  <small>修改：{template.updated_by?.name || "—"}</small>
+                </td>
+                <td>{date(item.requested_at)}</td>
+                <td>
+                  <Link to="/templates">查看模板 →</Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {!requests.length && <Empty>暂无需要管理员协助优化的 PPT 模板</Empty>}
+    </div>
+  );
+}
+
 function ProjectTable({ projects }: any) {
   return (
     <div className="table-wrap">
@@ -1375,6 +1452,7 @@ function Categories() {
   );
 }
 export function TemplatePicker({ onSelect, onClose }: any) {
+  const { user } = useApp();
   const [templates] = useLoad("/templates");
   const [cats] = useLoad("/template-categories");
   const [deps] = useLoad("/departments");
@@ -1382,6 +1460,10 @@ export function TemplatePicker({ onSelect, onClose }: any) {
   const [cat, setCat] = useState("");
   const [dep, setDep] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
+  const visibleDepartments =
+    user.role === "admin"
+      ? deps || []
+      : (deps || []).filter((department: any) => department.id === user.department_id);
   return (
     <Modal
       title="从模板库添加"
@@ -1400,7 +1482,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
         </div>
         <select value={dep} onChange={(e) => setDep(e.target.value)}>
           <option value="">全部部门</option>
-          {deps?.map((d: any) => (
+          {visibleDepartments.map((d: any) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
@@ -1557,6 +1639,7 @@ function Templates() {
   const [deps] = useLoad("/departments");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState("all");
+  const [selectedTemplateStatus, setSelectedTemplateStatus] = useState("all");
   const [q, setQ] = useState("");
   const [ingest, setIngest] = useState(false);
   const [detail, setDetail] = useState<any>(null);
@@ -1572,11 +1655,30 @@ function Templates() {
   const [schemeMode, setSchemeMode] = useState(false);
   const [downloadSelection, setDownloadSelection] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const [optimizingTemplateId, setOptimizingTemplateId] = useState("");
   const visibleCategories = (cats || []).filter(
     (category: any) => user.role === "admin" || category.active,
   );
   const departmentGroups = useMemo(() => {
     const rows = deps || [];
+    const publicMatch = (template: any) => !template.department_id || template.shared;
+
+    if (user.role !== "admin") {
+      const ownDepartment = rows.find(
+        (department: any) => department.id === user.department_id,
+      );
+      return [
+        { id: "all", name: "全部模板", match: () => true },
+        { id: "public", name: "公司公共", match: publicMatch },
+        {
+          id: "own",
+          name: ownDepartment?.name || "所在部门",
+          match: (template: any) =>
+            template.department_id === user.department_id && !template.shared,
+        },
+      ];
+    }
+
     const idsBy = (patterns: RegExp[]) =>
       rows
         .filter((department: any) =>
@@ -1627,7 +1729,7 @@ function Templates() {
           Boolean(template.department_id) && !namedIds.includes(template.department_id),
       },
     ];
-  }, [deps]);
+  }, [deps, user.department_id, user.role]);
   const selectedDepartment =
     departmentGroups.find((group: any) => group.id === selectedDepartmentGroup) ||
     departmentGroups[0];
@@ -1640,15 +1742,25 @@ function Templates() {
   const departmentCount = (group: any) =>
     (templates || []).filter((template: any) => departmentMatch(template, group))
       .length;
+  const statusMatch = (template: any) =>
+    selectedTemplateStatus === "all" ||
+    (selectedTemplateStatus === "enabled" ? template.active : !template.active);
   const filteredTemplates = templates?.filter(
     (t: any) =>
       departmentMatch(t) &&
+      statusMatch(t) &&
       t.name.includes(q) &&
       (!selectedCategories.length ||
         selectedCategories.includes(t.category_id)),
   );
-  const canUploadTemplates = user.role === "admin" || user.role === "contributor";
-  const canEditTemplates = user.role === "admin" || user.role === "contributor";
+  const canManageTemplates = ["admin", "business", "contributor"].includes(user.role);
+  const canUploadTemplates = canManageTemplates;
+  const canEditTemplate = (template: any) =>
+    user.role === "admin" ||
+    user.role === "contributor" ||
+    (user.role === "business" && template.created_by?.id === user.id);
+  const canRequestOptimization = (template: any) =>
+    user.role === "contributor" && template.created_by?.id === user.id;
   async function openTemplateDetail(template: any) {
     try {
       setDetail(await api(`/templates/${template.id}`));
@@ -1685,6 +1797,19 @@ function Templates() {
       notify(error.message);
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function requestOptimization(template: any) {
+    setOptimizingTemplateId(template.id);
+    try {
+      const result = await api(`/templates/${template.id}/optimize-request`, {}, "POST");
+      notify(result.duplicate ? "已申请过协助优化" : "已向管理员发送协助优化申请");
+      reload();
+    } catch (error: any) {
+      notify(error.message);
+    } finally {
+      setOptimizingTemplateId("");
     }
   }
 
@@ -1817,6 +1942,16 @@ function Templates() {
             </div>
           )}
           <div className="library-filter-controls">
+            <select
+              className="template-status-filter"
+              aria-label="模板状态"
+              value={selectedTemplateStatus}
+              onChange={(event) => setSelectedTemplateStatus(event.target.value)}
+            >
+              <option value="all">模板状态</option>
+              <option value="enabled">已启用</option>
+              <option value="disabled">已停用</option>
+            </select>
             <TemplateCategoryFilter
               categories={visibleCategories}
               selected={selectedCategories}
@@ -1861,6 +1996,15 @@ function Templates() {
                   <span className="template-tag">
                     {cats?.find((c: any) => c.id === t.category_id)?.name}
                   </span>
+                  {t.needs_optimization && (
+                    <span
+                      className="template-optimization-star"
+                      title={`需要协助优化${t.optimization_request_count ? ` · ${t.optimization_request_count} 个申请` : ""}`}
+                      aria-label="需要协助优化"
+                    >
+                      <Star size={15} fill="currentColor" />
+                    </span>
+                  )}
                   {downloadMode && (
                     <span
                       className={
@@ -1908,7 +2052,7 @@ function Templates() {
                       <Copy size={16} />
                     </button>
                   )}
-                  {canEditTemplates && (
+                  {canEditTemplate(t) && (
                     <>
                       <button
                         className="template-icon-button"
@@ -1935,6 +2079,30 @@ function Templates() {
                       >
                         <Palette size={16} />
                       </button>
+                      {canRequestOptimization(t) && (
+                        <button
+                          className="template-icon-button"
+                          data-tooltip={
+                            t.optimization_requested_by_me ? "已申请优化" : "协助优化"
+                          }
+                          aria-label={
+                            (t.optimization_requested_by_me
+                              ? "已申请协助优化"
+                              : "申请协助优化") + ` ${t.name}`
+                          }
+                          disabled={
+                            Boolean(t.optimization_requested_by_me) ||
+                            optimizingTemplateId === t.id
+                          }
+                          onClick={() => requestOptimization(t)}
+                        >
+                          {t.optimization_requested_by_me ? (
+                            <CheckCircle2 size={16} />
+                          ) : (
+                            <Sparkles size={16} />
+                          )}
+                        </button>
+                      )}
                       {user.role === "admin" && (
                         <button
                           className="template-icon-button danger-icon"
@@ -2247,6 +2415,12 @@ function People() {
   const [deps, reloadDeps] = useLoad("/departments");
   const [edit, setEdit] = useState<any>(null);
   const [department, setDepartment] = useState<any>(null);
+  const [personQuery, setPersonQuery] = useState("");
+  const filteredUsers = (users || []).filter((person: any) => {
+    const query = personQuery.trim().toLowerCase();
+    if (!query) return true;
+    return String(person.name || "").toLowerCase().includes(query);
+  });
   if (user.role !== "admin") return <Empty>需要管理员权限</Empty>;
   return (
     <main className="main">
@@ -2275,6 +2449,21 @@ function People() {
           新增人员
         </button>
       </Heading>
+      <div className="people-filter-bar">
+        <div className="search people-search">
+          <Search size={16} />
+          <input
+            type="search"
+            placeholder="搜索人员名称"
+            aria-label="搜索人员名称"
+            value={personQuery}
+            onChange={(event) => setPersonQuery(event.target.value)}
+          />
+        </div>
+        {personQuery.trim() && (
+          <span className="muted">匹配 {filteredUsers.length} 人</span>
+        )}
+      </div>
       <div className="panel">
         <table>
           <thead>
@@ -2288,7 +2477,7 @@ function People() {
             </tr>
           </thead>
           <tbody>
-            {users?.map((u: any) => (
+            {filteredUsers.map((u: any) => (
               <tr key={u.id}>
                 <td>
                   <div className="flex">
@@ -2340,6 +2529,9 @@ function People() {
             ))}
           </tbody>
         </table>
+        {!filteredUsers.length && (
+          <Empty>没有找到匹配的人员</Empty>
+        )}
       </div>
       {edit && (
         <Modal

@@ -25,9 +25,9 @@ export function TemplateImportDialog({
   const [department, setDepartment] = useState("");
   const [shared, setShared] = useState(true);
   const visibleDepartments =
-    user?.role === "contributor"
-      ? departments.filter((department) => department.id === user.department_id)
-      : departments;
+    user?.role === "admin"
+      ? departments
+      : departments.filter((department) => department.id === user?.department_id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const size = files.reduce((sum, file) => sum + file.size, 0);

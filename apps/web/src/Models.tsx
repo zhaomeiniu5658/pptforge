@@ -127,7 +127,7 @@ export function Models() {
                       {testing === m.id ? "测试中…" : "测试连接"}
                     </button>
                     <button
-                      className="danger"
+                      className="model-delete-button"
                       disabled={busy || testing === m.id}
                       onClick={() => {
                         setDeleteError("");

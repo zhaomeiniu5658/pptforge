@@ -55,6 +55,8 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMounted, setAiMounted] = useState(false);
   const [aiMode, setAiMode] = useState<"append" | "replace">("append");
+  const [needsOptimization, setNeedsOptimization] = useState(Boolean(template.needs_optimization));
+  const [completingOptimization, setCompletingOptimization] = useState(false);
   const [height, setHeight] = useState(720);
   const [canvasWidth, setCanvasWidth] = useState(700);
   const iframe = useRef<HTMLIFrameElement>(null);
@@ -238,6 +240,18 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
       setSaving(false);
     }
   };
+  const completeOptimization = async () => {
+    setCompletingOptimization(true);
+    setError("");
+    try {
+      await api(`/templates/${template.id}/optimize-complete`, {}, "POST");
+      setNeedsOptimization(false);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setCompletingOptimization(false);
+    }
+  };
   const close = () => {
     if (saving) return;
     if (dirty || source !== null) setConfirmClose(true);
@@ -250,27 +264,38 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
         <div className="grow"><h1>设计模板 · {template.name}</h1>
           <p>点击画布元素修改文字、图片和样式；保存新版本后重新启用即可使用。</p></div>
         <div className="template-design-actions">
-          <span className="template-save-status">
-            {dirty ? "有未保存修改" : "已保存"}
-          </span>
-          {settings?.ai_enabled !== false && (
+          {needsOptimization && (
+            <button
+              className="button template-optimization-complete-button"
+              disabled={saving || completingOptimization || source !== null}
+              onClick={completeOptimization}
+            >
+              {completingOptimization ? "处理中…" : "优化完成"}
+            </button>
+          )}
+          {settings?.ai_enabled === true && (
             <button className="primary" disabled={saving || source !== null} onClick={() => {
               setAiMode("append");
               setAiMounted(true);
               setAiOpen((open) => !open);
             }}><Sparkles size={17} />AI 生成新界面</button>
           )}
-          <button
-            className="primary"
-            disabled={saving || !dirty || source !== null}
-            onClick={saveTemplateVersion}
-          >
-            <Save size={15} />
-            {saving ? "保存中…" : "保存为新版本"}
-          </button>
+          <div className="template-save-action">
+            <button
+              className="primary"
+              disabled={saving || !dirty || source !== null}
+              onClick={saveTemplateVersion}
+            >
+              <Save size={15} />
+              {saving ? "保存中…" : "保存"}
+            </button>
+            <span className="template-save-status">
+              {dirty ? "有未保存修改" : "已保存"}
+            </span>
+          </div>
         </div>
       </header>
-      {settings?.ai_enabled !== false && aiMounted && aiMode === "append" && <div hidden={!aiOpen}>
+      {settings?.ai_enabled === true && aiMounted && aiMode === "append" && <div hidden={!aiOpen}>
         <TemplateAI template={template} document={current} pageIndex={active}
           disabled={saving || source !== null} onClose={() => setAiOpen(false)}
           initialMode="append" fixedMode
@@ -392,7 +417,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
               <Code2 size={14} />
               源码编辑
             </button>
-            {settings?.ai_enabled !== false && (
+            {settings?.ai_enabled === true && (
               <button
                 className="template-ai-edit-button"
                 disabled={saving || source !== null}
@@ -645,7 +670,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
           </aside>
         </section>
       </div>
-      {settings?.ai_enabled !== false && aiMounted && aiMode === "replace" && aiOpen && (
+      {settings?.ai_enabled === true && aiMounted && aiMode === "replace" && aiOpen && (
         <aside className="template-ai-drawer">
           <TemplateAI template={template} document={current} pageIndex={active}
             disabled={saving || source !== null} onClose={() => setAiOpen(false)}
