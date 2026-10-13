@@ -1,3 +1,4 @@
+import { categoryIds as expandedCategoryIds } from "./categoryTree";
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -63,9 +64,9 @@ function SchemeBuilder({
           template.active &&
           template.status === "published" &&
           template.name.toLowerCase().includes(query.trim().toLowerCase()) &&
-          (!categoryIds.length || categoryIds.includes(template.category_id)),
+          (!categoryIds.length || expandedCategoryIds(categories || [], categoryIds).has(template.category_id)),
       ),
-    [templates, query, categoryIds],
+    [templates, query, categoryIds, categories],
   );
   const chosen = selected
     .map((id) => (templates || []).find((template: any) => template.id === id))

@@ -17,7 +17,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_, text
+from sqlalchemy import select, func, or_, text, delete
 from sqlalchemy.exc import IntegrityError
 from .db import *
 from .security import *
@@ -25,6 +25,8 @@ from .content import store_asset, audit, normalize, tool, asset_data
 from .exports import bundle
 from .seed import seed, document
 from .model_profiles import router as models_router, seed_env_model, resolve_model
+from .wecom import router as wecom_router
+from .category_tree import descendants, validate_category, validate_location
 
 
 def ensure_runtime_columns():
@@ -54,6 +56,7 @@ async def lifespan(app):
 
 app = FastAPI(title="Quarkmed Workbench API", lifespan=lifespan)
 app.include_router(models_router)
+app.include_router(wecom_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("WEB_ORIGIN", "http://localhost:5174").split(","),
@@ -88,29 +91,7 @@ class LoginIn(BaseModel):
 
 @app.post("/api/auth/login")
 def login(body: LoginIn, response: Response, db=DB):
-    u = db.scalar(
-        select(User).where(User.username == body.username, User.active == True)
-    )
-    if not u or not verify_password(body.password, u.password_hash):
-        raise HTTPException(401, "账号或密码错误")
-    t = secrets.token_urlsafe(32)
-    db.add(
-        LoginSession(
-            user_id=u.id,
-            token_hash=token_hash(t),
-            expires_at=now() + timedelta(hours=12),
-        )
-    )
-    db.commit()
-    response.set_cookie(
-        "quark_session",
-        t,
-        httponly=True,
-        samesite="lax",
-        secure=os.getenv("COOKIE_SECURE", "false") == "true",
-        max_age=43200,
-    )
-    return asdict(u)
+    raise HTTPException(403, "账号密码登录已关闭，请通过企业微信工作台进入")
 
 
 @app.post("/api/auth/logout")
@@ -259,47 +240,99 @@ def patch_user(id: str, b: UserPatch, u=USER, db=DB):
 
 
 @app.get("/api/template-categories")
-def categories(u=USER, db=DB):
-    return [
-        {
-            **asdict(x),
-            "count": db.scalar(
-                select(func.count())
-                .select_from(Template)
-                .where(Template.category_id == x.id, Template.status != "deleted")
-            ),
-        }
-        for x in db.scalars(select(Category).order_by(Category.position))
-    ]
+def categories(department_only: bool = False, u=USER, db=DB):
+    rows = list(db.scalars(select(Category).order_by(Category.position, Category.created_at)))
+    if department_only and u.role != "admin":
+        rows = [c for c in rows if u.department_id and c.department_id == u.department_id]
+    by_id = {c.id: c for c in rows}
+    departments = {d.id: d.name for d in db.scalars(select(Department))}
+    scopes = sorted({c.department_id for c in rows}, key=lambda did: (bool(did), departments.get(did, "")))
+    rows = [node for scope in scopes
+            for root in rows if root.department_id == scope and not root.parent_id
+            for node in [root] + [child for child in rows if child.parent_id == root.id]]
+    counts = dict(db.execute(select(Template.category_id, func.count()).where(
+        Template.status != "deleted").group_by(Template.category_id)).all())
+    return [{**asdict(c), "count": counts.get(c.id, 0),
+             "subtree_count": sum(counts.get(cid, 0) for cid in descendants(rows, c.id)),
+             "department_name": departments.get(c.department_id, "通用"),
+             "path": (by_id[c.parent_id].name + " / " if c.parent_id in by_id else "") + c.name}
+            for c in rows]
 
 
 class CategoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     active: bool = True
+    department_id: str | None = None
+    parent_id: str | None = None
+
+
+class CategoryPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    active: bool | None = None
+    department_id: str | None = None
+    parent_id: str | None = None
 
 
 @app.post("/api/template-categories")
 def create_category(b: CategoryIn, u=USER, db=DB):
     admin(u)
-    x = Category(
-        **b.model_dump(), position=db.scalar(select(func.count()).select_from(Category))
-    )
+    db.execute(text("SELECT pg_advisory_xact_lock(71340220)"))
+    rows = list(db.scalars(select(Category)))
+    validate_location(db, rows, None, b.department_id, b.parent_id, b.active)
+    name = b.name.strip()
+    if not name:
+        raise HTTPException(422, "分类名称不能为空")
+    x = Category(**{**b.model_dump(), "name": name}, position=len(rows))
     db.add(x)
+    db.flush()
+    audit(db, u, "category.create", x.id)
     db.commit()
     return asdict(x)
 
 
 @app.patch("/api/template-categories/{id}")
-def patch_category(id: str, b: CategoryIn, u=USER, db=DB):
+def patch_category(id: str, b: CategoryPatch, u=USER, db=DB):
     admin(u)
+    db.execute(text("SELECT pg_advisory_xact_lock(71340220)"))
     x = db.get(Category, id)
     if not x:
         raise HTTPException(404, "分类不存在")
-    x.name = b.name
-    x.active = b.active
-    audit(db, u, "category.update", id)
+    changes = b.model_dump(exclude_unset=True)
+    if "name" in changes:
+        if not changes["name"] or not changes["name"].strip():
+            raise HTTPException(422, "分类名称不能为空")
+        changes["name"] = changes["name"].strip()
+    if "active" in changes and changes["active"] is None:
+        raise HTTPException(422, "分类状态不能为空")
+    rows = list(db.scalars(select(Category)))
+    validate_location(db, rows, id, changes.get("department_id", x.department_id),
+                      changes.get("parent_id", x.parent_id), changes.get("active", x.active))
+    for field, value in changes.items():
+        setattr(x, field, value)
+    if changes.get("active") is False:
+        for child in rows:
+            if child.id in descendants(rows, id):
+                child.active = False
+    audit(db, u, "category.update", id, {"fields": list(changes)})
     db.commit()
     return asdict(x)
+
+
+@app.delete("/api/template-categories/{id}")
+def delete_category(id: str, u=USER, db=DB):
+    admin(u)
+    db.execute(text("SELECT pg_advisory_xact_lock(71340220)"))
+    category = db.get(Category, id)
+    if not category:
+        raise HTTPException(404, "分类不存在")
+    ids = descendants(list(db.scalars(select(Category))), id)
+    # Include soft-deleted templates: their historical foreign keys remain valid.
+    if db.scalar(select(Template.id).where(Template.category_id.in_(ids)).limit(1)):
+        raise HTTPException(409, "分类或子分类已关联模板，请使用停用保留历史记录")
+    audit(db, u, "category.delete", id, {"name": category.name, "deleted_count": len(ids)})
+    db.execute(delete(Category).where(Category.id.in_(ids)))
+    db.commit()
+    return {"deleted": len(ids)}
 
 
 def page_out(db, p):
@@ -918,18 +951,20 @@ def template_manage_access(db, t, u):
     else:
         template_department_id = getattr(t, "department_id", None)
         user_department_id = getattr(u, "department_id", None)
-        if not (
-            getattr(t, "shared", False)
-            or (template_department_id is not None and template_department_id == user_department_id)
-            or getattr(t, "created_by_id", None) == u.id
+        if (
+            not user_department_id
+            or getattr(t, "shared", False)
+            or template_department_id != user_department_id
         ):
-            raise HTTPException(403, "只能修改公司共有模板或本部门模板")
+            raise HTTPException(403, "只能修改本部门模板库中的模板")
     if not template_has_active_category(db, t):
         raise HTTPException(422, "模板分类已停用，暂不能修改")
 
 
 def normalize_template_scope(db, u, department_id, shared):
     department_id = department_id or None
+    if u.role == "contributor":
+        return u.department_id, False
     if department_id and not db.get(Department, department_id):
         raise HTTPException(422, "部门不存在")
     if u.role != "admin" and department_id and department_id != u.department_id:
@@ -1015,8 +1050,10 @@ def template_out(db, t, include_documents=True, viewer=None):
 
 
 @app.get("/api/templates")
-def templates(summary: bool = False, u=USER, db=DB):
+def templates(summary: bool = False, department_only: bool = False, u=USER, db=DB):
     q = select(Template).where(Template.status != "deleted").order_by(Template.created_at.desc())
+    if department_only and u.role != "admin":
+        q = q.where(Template.department_id == u.department_id) if u.department_id else q.where(text("false"))
     if u.role != "admin":
         q = q.where(
             template_scope_clause(u),
@@ -1410,6 +1447,8 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         )
         changes["department_id"] = normalized_department
         changes["shared"] = normalized_shared
+    validate_category(db, changes.get("category_id", t.category_id),
+                      changes.get("department_id", t.department_id))
     for key in ("active", "shared"):
         if key in changes and changes[key] is None:
             raise HTTPException(422, "状态不能为空")
@@ -1551,8 +1590,13 @@ def request_template_optimization(id: str, u=USER, db=DB):
     t = db.get(Template, id)
     if not t or t.status == "deleted":
         raise HTTPException(404, "模板不存在")
-    if u.role != "contributor" or t.created_by_id != u.id:
-        raise HTTPException(403, "只能为自己上传的模板申请协助优化")
+    if (
+        u.role != "contributor"
+        or t.created_by_id != u.id
+        or t.shared
+        or t.department_id != u.department_id
+    ):
+        raise HTTPException(403, "只能为自己上传的本部门模板申请协助优化")
     existing = active_template_optimization_count(db, t.id, u.id) > 0
     if existing:
         return {"ok": True, "requested": True, "duplicate": True, "notified": 0}
@@ -1971,6 +2015,7 @@ async def template_import(
     if not category or not category.active:
         raise HTTPException(422, "请选择启用的模板分类")
     department_id, shared = normalize_template_scope(db, u, department_id, shared)
+    validate_category(db, category_id, department_id)
     if len(files) > (MAX_FILES if input_mode == "folder" else 10):
         raise HTTPException(422, "文件夹最多 500 个文件；批量导入最多 10 个文件/压缩包")
     if len(template_name) > 200:

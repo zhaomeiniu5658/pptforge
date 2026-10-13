@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileUp, FolderUp } from "lucide-react";
 import { api } from "./api";
 import { Modal, Field } from "./components";
+import { CategoryNode, availableCategories, categoryLabel } from "./categoryTree";
 
 export function TemplateImportDialog({
   categories,
@@ -10,7 +11,7 @@ export function TemplateImportDialog({
   onClose,
   onImported,
 }: {
-  categories: { id: string; name: string; active: boolean }[];
+  categories: CategoryNode[];
   departments: { id: string; name: string }[];
   user?: { role: string; department_id?: string | null };
   onClose: () => void;
@@ -19,10 +20,10 @@ export function TemplateImportDialog({
   const [mode, setMode] = useState<"files" | "folder">("files");
   const [files, setFiles] = useState<File[]>([]);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState(
-    categories.find((c) => c.active)?.id || "",
-  );
-  const [department, setDepartment] = useState("");
+  const initialDepartment = user?.role === "admin" ? "" : user?.department_id || "";
+  const [department, setDepartment] = useState(initialDepartment);
+  const [category, setCategory] = useState("");
+  const selectableCategories = availableCategories(categories, department);
   const [shared, setShared] = useState(true);
   const visibleDepartments =
     user?.role === "admin"
@@ -181,11 +182,10 @@ export function TemplateImportDialog({
               <option value="" disabled>
                 请选择分类
               </option>
-              {categories
-                .filter((c) => c.active)
+              {selectableCategories
                 .map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryLabel(c)}
                   </option>
                 ))}
             </select>
@@ -193,10 +193,10 @@ export function TemplateImportDialog({
           <Field label="归属部门">
             <select
               value={department}
-              disabled={busy}
-              onChange={(e) => setDepartment(e.target.value)}
+              disabled={busy || user?.role === "contributor"}
+              onChange={(e) => { setDepartment(e.target.value); setCategory(""); }}
             >
-              <option value="">平台公共资产</option>
+              {user?.role !== "contributor" && <option value="">平台公共资产</option>}
               {visibleDepartments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

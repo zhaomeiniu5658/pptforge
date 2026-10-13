@@ -1,8 +1,8 @@
-import hashlib, secrets, base64
+import hashlib, secrets, base64, os
 from datetime import datetime, timezone
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy import select, or_
-from .db import SessionLocal, User, LoginSession, Project, Member, Booklet
+from .db import SessionLocal, User, LoginSession, Project, Member, Booklet, WecomIdentity
 
 
 def hash_password(password):
@@ -27,7 +27,15 @@ def db_session():
         yield db
 
 
+def require_wecom_client(request):
+    # Client gate improves routing; authentication relies on server-verified OAuth,
+    # never on this forgeable User-Agent string alone.
+    if "wxwork" not in request.headers.get("user-agent", "").lower():
+        raise HTTPException(403, "请通过企业微信工作台进入 PPT 智造")
+
+
 def current_user(request: Request, db=Depends(db_session)):
+    require_wecom_client(request)
     token = request.cookies.get("quark_session", "")
     session = db.scalar(
         select(LoginSession).where(
@@ -35,13 +43,18 @@ def current_user(request: Request, db=Depends(db_session)):
             LoginSession.expires_at > datetime.now(timezone.utc),
         )
     )
+    corp_id = os.getenv("WECOM_CORP_ID", "").strip()
+    if (not session or session.auth_provider != "wecom" or not corp_id
+            or session.auth_corp_id != corp_id):
+        raise HTTPException(401, "请通过企业微信验证身份")
+    if not db.scalar(select(WecomIdentity.id).where(
+            WecomIdentity.user_id == session.user_id, WecomIdentity.corp_id == corp_id)):
+        raise HTTPException(401, "企业微信身份关联已失效，请联系管理员")
     user = db.get(User, session.user_id) if session else None
     if not user or not user.active:
         raise HTTPException(401, "请先登录")
     # Same-origin mutation guard; the Vite/nginx proxy retains the browser origin.
     if request.method not in ("GET", "HEAD", "OPTIONS"):
-        import os
-
         origin = request.headers.get("origin")
         allowed = os.getenv("WEB_ORIGIN", "http://localhost:5174").split(",")
         if origin and origin not in allowed:

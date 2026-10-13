@@ -11,6 +11,8 @@ from sqlalchemy import (
     Boolean,
     JSON,
     UniqueConstraint,
+    Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
@@ -73,13 +75,38 @@ class LoginSession(Row, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    auth_provider: Mapped[str] = mapped_column(String(20), default="local", server_default="local")
+    auth_corp_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class WecomIdentity(Row, Base):
+    __tablename__ = "wecom_identities"
+    corp_id: Mapped[str] = mapped_column(String(100))
+    wecom_userid: Mapped[str] = mapped_column(String(128))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    __table_args__ = (
+        UniqueConstraint("corp_id", "wecom_userid"),
+        UniqueConstraint("corp_id", "user_id"),
+    )
+
+
+class WecomLoginState(Row, Base):
+    __tablename__ = "wecom_login_states"
+    state_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    browser_hash: Mapped[str] = mapped_column(String(64))
+    next_path: Mapped[str] = mapped_column(String(2000))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class Category(Row, Base):
     __tablename__ = "template_categories"
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    name: Mapped[str] = mapped_column(String(100))
+    department_id: Mapped[str | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("template_categories.id"), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
+    __table_args__ = (Index("uq_category_scope_name", text("coalesce(department_id, '')"),
+                           text("coalesce(parent_id, '')"), "name", unique=True),)
 
 
 class Project(Row, Base):

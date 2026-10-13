@@ -55,6 +55,9 @@ import { ProjectManagement } from "./ProjectManagement";
 import { TemplateImportDialog } from "./TemplateImportDialog";
 import { TemplateContentEditor } from "./TemplateContentEditor";
 import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
+import { CategoryManagement } from "./CategoryManagement";
+import { TemplateLibraryTree } from "./TemplateLibraryTree";
+import { categoryIds, categoryLabel, availableCategories } from "./categoryTree";
 import { PptSchemeLibrary } from "./PptSchemeLibrary";
 import "./style.css";
 export const Context = React.createContext<any>(null);
@@ -72,82 +75,21 @@ const detailModalWidth = (detail: any) => {
   return Math.min(Math.max(760, viewport - 70), desired);
 };
 function Login({ onLogin }: any) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="login">
-      <div className="login-story">
-        <div className="brand light">
-          <Layers3 />
-          Quarkmed <span>夸克医药</span>
-        </div>
-        <div>
-          <div className="eyebrow">MODERN CLINICAL INTELLIGENCE</div>
-          <h1>
-            让专业知识，
-            <br />
-            成为出色的方案。
-          </h1>
-          <p>
-            连接医学资产、专业团队与智能设计。
-            <br />
-            从一页灵感，到完整的临床方案。
-          </p>
-          <div className="login-pills">
-            <span>标准化资产</span>
-            <span>跨部门协同</span>
-            <span>AI 辅助设计</span>
-          </div>
-        </div>
-        <small>QUARKMED · PPT / HTML 方案智造平台</small>
-      </div>
-      <form
-        className="login-card"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          try {
-            onLogin(await api("/auth/login", { username, password }));
-          } catch (e: any) {
-            setError(e.message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="eyebrow">WELCOME BACK</div>
-        <h2>登录方案智造平台</h2>
-        <p>使用内部账号进入您的专属工作台</p>
-        <Field label="账号">
-          <input
-            autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            placeholder="请输入内部账号"
-          />
-        </Field>
-        <Field label="密码">
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="请输入密码"
-          />
-        </Field>
-        {error && <p className="error">{error}</p>}
-        <button className="primary full" disabled={busy}>
-          {busy ? "登录中…" : "进入工作台"}
-          <ArrowRight size={17} />
-        </button>
-        <p className="login-foot">企业内部工作空间 · 版本留痕与安全会话</p>
-      </form>
-    </div>
-  );
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [error, setError] = useState(() => new URLSearchParams(window.location.search).get("wecom_error") || "");
+  const inWecom = /wxwork/i.test(navigator.userAgent);
+  useEffect(() => {
+    api("/auth/wecom/config").then(value => setEnabled(value.enabled === true)).catch(() => {
+      setEnabled(false); setError("暂时无法连接认证服务，请稍后重试。");
+    });
+  }, []);
+  return <div className="login"><div className="login-story"><div className="brand light"><Layers3 />Quarkmed <span>夸克医药</span></div><div><div className="eyebrow">MODERN CLINICAL INTELLIGENCE</div><h1>让专业知识，<br />成为出色的方案。</h1><p>连接医学资产、专业团队与智能设计。</p><div className="login-pills"><span>标准化资产</span><span>跨部门协同</span><span>AI 辅助设计</span></div></div><small>QUARKMED · PPT / HTML 方案智造平台</small></div>
+    <section className="login-card"><div className="eyebrow">ENTERPRISE WORKSPACE</div><h2>{inWecom ? "企业微信身份验证" : "请在企业微信中打开"}</h2><p>{inWecom ? "使用当前企业微信身份进入您的工作台，无需输入账号密码。" : "请打开企业微信 → 工作台 → PPT 智造。"}</p>
+      {error && <p className="error" role="alert">{error}</p>}
+      {inWecom && enabled === false && !error && <p className="error">企业微信应用尚未配置完成，请联系管理员。</p>}
+      {inWecom && <button type="button" className="primary full" disabled={enabled !== true} onClick={() => window.location.assign("/api/auth/wecom/start?next=" + encodeURIComponent(window.location.pathname))}>{enabled === null ? "正在连接企业微信…" : "验证企业微信身份"}<ArrowRight size={17} /></button>}
+      <p className="login-foot">仅支持企业微信身份登录</p>
+    </section></div>;
 }
 const cachedSettings = () => {
   if (typeof window === "undefined") return { ai_enabled: false, loaded: false };
@@ -174,6 +116,7 @@ function Shell() {
   const [settings, setSettingsState] = useState<any>(() => cachedSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [wecomConnecting, setWecomConnecting] = useState(false);
   const setSettings = (next: any) => {
     const normalized = { ...next, ai_enabled: next?.ai_enabled !== false, loaded: true };
     persistSettings(normalized);
@@ -184,7 +127,17 @@ function Shell() {
   useEffect(() => {
     api("/me")
       .then(setUser)
-      .catch(() => {})
+      .catch(async (error) => {
+        if (error.status !== 401 || !/wxwork/i.test(navigator.userAgent)
+            || new URLSearchParams(window.location.search).has("wecom_error")) return;
+        try {
+          const config = await api("/auth/wecom/config");
+          if (config.enabled === true) {
+            setWecomConnecting(true);
+            window.location.replace("/api/auth/wecom/start?next=" + encodeURIComponent(loc.pathname + loc.search));
+          }
+        } catch {}
+      })
       .finally(() => setReady(true));
   }, []);
   useEffect(() => {
@@ -214,7 +167,7 @@ function Shell() {
       return null;
     }
   }
-  if (!ready) return <div className="loading">正在连接工作空间…</div>;
+  if (!ready || wecomConnecting) return <div className="loading">正在连接工作空间…</div>;
   if (!user)
     return (
       <Login
@@ -1348,138 +1301,9 @@ function ProjectDetail() {
 function Categories() {
   const { user, run } = useApp();
   const [cats, reload] = useLoad("/template-categories");
-  const [edit, setEdit] = useState<any>(null);
-  const [q, setQ] = useState("");
+  const [deps] = useLoad("/departments");
   if (user.role !== "admin") return <Empty>需要管理员权限</Empty>;
-  return (
-    <main className="main">
-      <Heading
-        eyebrow="ASSET CLASSIFICATION"
-        title="模板分类维护"
-        description="维护统一分类标准，让专业资产有序沉淀。"
-      >
-        <button
-          className="primary"
-          onClick={() => setEdit({ name: "", active: true })}
-        >
-          <Plus size={17} />
-          新增一级分类
-        </button>
-      </Heading>
-      <div className="info-banner">
-        <LayoutGrid size={27} />
-        <div>
-          <b>规范分类 · 高效复用</b>
-          <p>分类停用后不再显示于模板选择中，已使用的项目页面不受影响。</p>
-        </div>
-        <span>{cats?.length || 0} 个分类</span>
-      </div>
-      <div className="panel">
-        <div className="filter-bar">
-          <h2>分类列表</h2>
-          <div className="search">
-            <Search size={16} />
-            <input
-              placeholder="搜索分类名称"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>分类名称</th>
-              <th>关联模板</th>
-              <th>状态</th>
-              <th>创建日期</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cats
-              ?.filter((c: any) => c.name.includes(q))
-              .map((c: any) => (
-                <tr key={c.id}>
-                  <td>
-                    <span className="folder-icon">
-                      <FolderOpen size={18} />
-                    </span>
-                    <b>{c.name}</b>
-                  </td>
-                  <td>{c.count} 套</td>
-                  <td>
-                    <Badge status={c.active ? "approved" : "returned"}>
-                      {c.active ? "已启用" : "已停用"}
-                    </Badge>
-                  </td>
-                  <td>{date(c.created_at)}</td>
-                  <td>
-                    <button className="text-button" onClick={() => setEdit(c)}>
-                      重命名
-                    </button>
-                    <button
-                      className="text-button muted"
-                      onClick={() =>
-                        run(async () => {
-                          await api(
-                            "/template-categories/" + c.id,
-                            { name: c.name, active: !c.active },
-                            "PATCH",
-                          );
-                          reload();
-                        })
-                      }
-                    >
-                      {c.active ? "停用" : "启用"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-      {edit && (
-        <Modal
-          title={edit.id ? "重命名分类" : "新增分类"}
-          onClose={() => setEdit(null)}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              run(async () => {
-                await api(
-                  "/template-categories" + (edit.id ? "/" + edit.id : ""),
-                  { name: edit.name, active: edit.active },
-                  edit.id ? "PATCH" : "POST",
-                );
-                setEdit(null);
-                reload();
-              });
-            }}
-          >
-            <div className="modal-body">
-              <Field label="分类名称">
-                <input
-                  autoFocus
-                  required
-                  maxLength={100}
-                  value={edit.name}
-                  onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                />
-              </Field>
-            </div>
-            <footer className="modal-footer">
-              <button type="button" onClick={() => setEdit(null)}>
-                取消
-              </button>
-              <button className="primary">保存分类</button>
-            </footer>
-          </form>
-        </Modal>
-      )}
-    </main>
-  );
+  return <CategoryManagement categories={cats} departments={deps} reload={reload} run={run} />;
 }
 export function TemplatePicker({ onSelect, onClose }: any) {
   const { user } = useApp();
@@ -1510,7 +1334,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
             placeholder="搜索模板名称"
           />
         </div>
-        <select value={dep} onChange={(e) => setDep(e.target.value)}>
+        <select value={dep} onChange={(e) => { setDep(e.target.value); setCat(""); }}>
           <option value="">全部部门</option>
           {visibleDepartments.map((d: any) => (
             <option key={d.id} value={d.id}>
@@ -1520,20 +1344,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
         </select>
       </div>
       <div className="category-tabs">
-        <button className={!cat ? "selected" : ""} onClick={() => setCat("")}>
-          全部模板
-        </button>
-        {cats
-          ?.filter((c: any) => c.active)
-          .map((c: any) => (
-            <button
-              key={c.id}
-              className={cat === c.id ? "selected" : ""}
-              onClick={() => setCat(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
+        <TemplateCategoryFilter categories={(cats || []).filter((c: any) => c.active && (!dep || !c.department_id || c.department_id === dep))} selected={cat ? [cat] : []} onChange={(ids) => setCat(ids.at(-1) || "")} />
       </div>
       <div className="modal-body template-grid">
         {templates
@@ -1542,7 +1353,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
               t.status === "published" &&
               t.active &&
               t.name.includes(q) &&
-              (!cat || t.category_id === cat) &&
+              (!cat || categoryIds(cats || [], [cat]).has(t.category_id)) &&
               (!dep || t.department_id === dep),
           )
           .map((t: any) => (
@@ -1562,7 +1373,7 @@ export function TemplatePicker({ onSelect, onClose }: any) {
               <div className="template-image">
                 <Preview document={t.documents[0]} mini miniViewportWidth={1520} miniViewportHeight={900} />
                 <span className="template-tag">
-                  {cats?.find((c: any) => c.id === t.category_id)?.name}
+                  {cats?.find((c: any) => c.id === t.category_id)?.path}
                 </span>
                 <span className="check-box">
                   {chosen.includes(t.id) ? "✓" : ""}
@@ -1664,11 +1475,11 @@ function TemplateCardPreview({ template, children }: { template: any; children?:
 function Templates() {
   const { user, run, notify } = useApp();
   const navigate = useNavigate();
-  const [templates, reload] = useLoad("/templates?summary=1");
-  const [cats] = useLoad("/template-categories");
+  const [templates, reload] = useLoad("/templates?summary=1" + (user.role !== "admin" ? "&department_only=1" : ""));
+  const [cats] = useLoad("/template-categories" + (user.role !== "admin" ? "?department_only=1" : ""));
   const [deps] = useLoad("/departments");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState("all");
+  const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState(user.role === "admin" ? "all" : user.department_id || "none");
   const [selectedTemplateStatus, setSelectedTemplateStatus] = useState("all");
   const [q, setQ] = useState("");
   const [ingest, setIngest] = useState(false);
@@ -1686,92 +1497,13 @@ function Templates() {
   const [downloadSelection, setDownloadSelection] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
   const [optimizingTemplateId, setOptimizingTemplateId] = useState("");
-  const visibleCategories = (cats || []).filter(
-    (category: any) => user.role === "admin" || category.active,
-  );
-  const departmentGroups = useMemo(() => {
-    const rows = deps || [];
-    const publicMatch = (template: any) => !template.department_id || template.shared;
-
-    if (user.role !== "admin") {
-      const ownDepartment = rows.find(
-        (department: any) => department.id === user.department_id,
-      );
-      return [
-        { id: "all", name: "全部模板", match: () => true },
-        { id: "public", name: "公司公共", match: publicMatch },
-        {
-          id: "own",
-          name: ownDepartment?.name || "所在部门",
-          match: (template: any) =>
-            template.department_id === user.department_id && !template.shared,
-        },
-      ];
-    }
-
-    const idsBy = (patterns: RegExp[]) =>
-      rows
-        .filter((department: any) =>
-          patterns.some((pattern) => pattern.test(department.name || "")),
-        )
-        .map((department: any) => department.id);
-
-    const publicIds = idsBy([/公司公共|公共|夸克医药|综合管理|总经办|行政/]);
-    const medicalIds = idsBy([/医学|研发医学/]);
-    const statisticsIds = idsBy([/统计|数统|生物统计/]);
-    const radiationIds = idsBy([/辐射|剂量/]);
-    const clinicalIds = idsBy([/临床运营|临床/]);
-    const qualityIds = idsBy([/质量|QA|QC/i]);
-    const registerIds = idsBy([/注册|法规/]);
-    const businessIds = idsBy([/商务|BD|市场/i]);
-    const namedIds = [
-      ...publicIds,
-      ...medicalIds,
-      ...statisticsIds,
-      ...radiationIds,
-      ...clinicalIds,
-      ...qualityIds,
-      ...registerIds,
-      ...businessIds,
-    ];
-
-    return [
-      { id: "all", name: "全部部门", match: () => true },
-      {
-        id: "public",
-        name: "公司公共",
-        match: (template: any) =>
-          !template.department_id ||
-          template.shared ||
-          publicIds.includes(template.department_id),
-      },
-      { id: "medical", name: "医学", ids: medicalIds },
-      { id: "statistics", name: "统计学", ids: statisticsIds },
-      { id: "radiation", name: "辐射剂量学", ids: radiationIds },
-      { id: "clinical", name: "临床运营", ids: clinicalIds },
-      { id: "quality", name: "质量管理", ids: qualityIds },
-      { id: "register", name: "注册法规", ids: registerIds },
-      { id: "business", name: "商务", ids: businessIds },
-      {
-        id: "other",
-        name: "其他",
-        match: (template: any) =>
-          Boolean(template.department_id) && !namedIds.includes(template.department_id),
-      },
-    ];
-  }, [deps, user.department_id, user.role]);
-  const selectedDepartment =
-    departmentGroups.find((group: any) => group.id === selectedDepartmentGroup) ||
-    departmentGroups[0];
-  const departmentMatch = (template: any, group: any = selectedDepartment) =>
-    group?.match
-      ? group.match(template)
-      : group?.ids
-        ? group.ids.includes(template.department_id)
-        : true;
-  const departmentCount = (group: any) =>
-    (templates || []).filter((template: any) => departmentMatch(template, group))
-      .length;
+  const visibleCategories = (cats || []).filter((c: any) => user.role === "admin" || (c.active && c.department_id === user.department_id));
+  const departmentMatch = (template: any) => {
+    if (user.role !== "admin") return Boolean(user.department_id) && template.department_id === user.department_id;
+    if (selectedDepartmentGroup === "all") return true;
+    if (selectedDepartmentGroup === "public") return (cats || []).some((c: any) => !c.department_id && c.id === template.category_id);
+    return template.department_id === selectedDepartmentGroup;
+  };
   const statusMatch = (template: any) =>
     selectedTemplateStatus === "all" ||
     (selectedTemplateStatus === "enabled" ? template.active : !template.active);
@@ -1781,16 +1513,22 @@ function Templates() {
       statusMatch(t) &&
       t.name.includes(q) &&
       (!selectedCategories.length ||
-        selectedCategories.includes(t.category_id)),
+        (selectedCategories[0] === "unclassified"
+          ? !visibleCategories.some((c: any) => c.id === t.category_id)
+          : categoryIds(cats || [], selectedCategories).has(t.category_id))),
   );
   const canManageTemplates = ["admin", "business", "contributor"].includes(user.role);
   const canUploadTemplates = canManageTemplates;
+  const isOwnDepartmentTemplate = (template: any) =>
+    !template.shared && template.department_id === user.department_id;
   const canEditTemplate = (template: any) =>
     user.role === "admin" ||
-    user.role === "contributor" ||
+    (user.role === "contributor" && isOwnDepartmentTemplate(template)) ||
     (user.role === "business" && template.created_by?.id === user.id);
   const canRequestOptimization = (template: any) =>
-    user.role === "contributor" && template.created_by?.id === user.id;
+    user.role === "contributor" &&
+    template.created_by?.id === user.id &&
+    isOwnDepartmentTemplate(template);
   const optimizationButtonState = (template: any) => {
     if (template.optimization_status === "pending" || template.optimization_requested_by_me) {
       return {
@@ -1946,24 +1684,9 @@ function Templates() {
       </Heading>
       <div className="panel template-library-panel">
         <div className="template-library-layout">
-          <aside className="template-category-sidebar" aria-label="部门分类">
-            <div className="template-category-sidebar-title">部门分类</div>
-            <div className="template-category-sidebar-list compact">
-              {departmentGroups.map((group: any) => (
-                <button
-                  type="button"
-                  key={group.id}
-                  className={
-                    selectedDepartmentGroup === group.id ? "selected" : ""
-                  }
-                  onClick={() => setSelectedDepartmentGroup(group.id)}
-                >
-                  <span>{group.name}</span>
-                  <em>{departmentCount(group)}</em>
-                </button>
-              ))}
-            </div>
-          </aside>
+          <TemplateLibraryTree categories={visibleCategories} departments={deps} templates={templates} user={user}
+            department={selectedDepartmentGroup} selected={selectedCategories[0] || ""}
+            onSelect={(department: string, category: string) => { setSelectedDepartmentGroup(department); setSelectedCategories(category ? [category] : []); }} />
           <div className="template-library-content">
             <div className="filter-bar library-filter-bar">
           <span className="muted">
@@ -2009,11 +1732,6 @@ function Templates() {
               <option value="enabled">已启用</option>
               <option value="disabled">已停用</option>
             </select>
-            <TemplateCategoryFilter
-              categories={visibleCategories}
-              selected={selectedCategories}
-              onChange={setSelectedCategories}
-            />
             <div className="search">
               <Search size={16} />
               <input
@@ -2051,7 +1769,7 @@ function Templates() {
                     {t.active ? "已启用" : "已停用"}
                   </span>
                   <span className="template-tag">
-                    {cats?.find((c: any) => c.id === t.category_id)?.name}
+                    {cats?.find((c: any) => c.id === t.category_id)?.path}
                   </span>
                   {t.needs_optimization && (
                     <span
@@ -2254,7 +1972,7 @@ function Templates() {
           <footer className="modal-footer template-detail-footer">
             <p className="template-detail-meta muted">
               分类：
-              {cats?.find((c: any) => c.id === detail.category_id)?.name || "—"}
+              {cats?.find((c: any) => c.id === detail.category_id)?.path || "—"}
               {" · 所属部门："}
               {deps?.find((d: any) => d.id === detail.department_id)?.name ||
                 "平台公共资产"}
@@ -2321,13 +2039,15 @@ function Templates() {
                     })
                   }
                 >
+                  <option value="" disabled>请选择该部门分类</option>
                   {cats
                     ?.filter(
-                      (c: any) => c.active || c.id === detail.category_id,
+                      (c: any) => availableCategories(cats || [], editingInfo.department_id).some(x => x.id === c.id)
+                        || (c.id === detail.category_id && editingInfo.department_id === detail.department_id),
                     )
                     .map((c: any) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {categoryLabel(c)}
                       </option>
                     ))}
                 </select>
@@ -2339,6 +2059,7 @@ function Templates() {
                     setEditingInfo({
                       ...editingInfo,
                       department_id: e.target.value || null,
+                      category_id: "",
                     })
                   }
                 >

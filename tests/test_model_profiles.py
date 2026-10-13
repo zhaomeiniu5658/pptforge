@@ -46,12 +46,13 @@ def test_image_routing_and_disabled_model(clients,workspace,profile,monkeypatch)
     from quark import main
     m,body=profile
     p,b,u=workspace
-    clients['admin'].patch('/settings', json={'ai_enabled': True})
     writer_project = clients['writer'].get('/projects/' + p['id'])
     assert writer_project.status_code == 200, writer_project.text
     writer_booklet = writer_project.json()['booklets'][0]
     payload=dict(project_id=p['id'],booklet_id=writer_booklet['id'],prompt='test',model_id=m['id'])
     # Use in-process HTTP for accepted dispatch so the real worker never calls a fake provider.
+    # This test checks model routing; never alter the deployment's global AI switch.
+    monkeypatch.setattr(main, 'require_ai_enabled', lambda db: None)
     monkeypatch.setattr(main,'dispatch',lambda db,user,kind,payload,pid:payload)
     with SessionLocal() as db:
         writer_user = db.scalar(select(User).where(User.username == 'writer'))

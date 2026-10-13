@@ -477,6 +477,50 @@ def test_admin_can_edit_template_metadata_and_content(clients):
         assert admin.delete("/templates/" + tid).status_code == 200
 
 
+def test_contributor_cannot_manage_company_public_templates(clients):
+    from quark.db import Category, Template, TemplateVersion, User
+    from quark.seed import document
+
+    admin = clients["admin"]
+    writer = clients["writer"]
+    with SessionLocal() as db:
+        category = db.scalar(select(Category).where(Category.active == True))
+        writer_user = db.scalar(select(User).where(User.username == "writer"))
+        public_template = Template(
+            name="QA 公共不可改 " + uuid.uuid4().hex[:6],
+            category_id=category.id,
+            department_id=None,
+            shared=True,
+            active=True,
+            status="published",
+            created_by_id=writer_user.id,
+            updated_by_id=writer_user.id,
+        )
+        db.add(public_template)
+        db.flush()
+        version = TemplateVersion(
+            template_id=public_template.id,
+            documents=[document("公共模板只读")],
+            published=True,
+        )
+        db.add(version)
+        db.flush()
+        public_template.current_version_id = version.id
+        db.commit()
+        tid, vid = public_template.id, version.id
+    try:
+        visible = next(t for t in writer.get("/templates").json() if t["id"] == tid)
+        assert visible["shared"] is True
+        assert writer.patch("/templates/" + tid, json={"name": "不应允许"}).status_code == 403
+        assert writer.patch("/templates/" + tid + "/content", json={
+            "base_version_id": vid,
+            "documents": [{"html": "<p>不应允许</p>", "css": ""}],
+        }).status_code == 403
+        assert writer.post(f"/templates/{tid}/optimize-request", json={}).status_code == 403
+    finally:
+        assert admin.delete("/templates/" + tid).status_code == 200
+
+
 def test_contributor_can_request_own_template_optimization_once(clients):
     from quark.db import Audit, Category, Notification, Template, TemplateVersion, User
     from quark.seed import document
@@ -848,6 +892,10 @@ def test_template_folder_and_zip_import(clients):
         assert writer_template['name'] == writer_form['template_name']
         assert writer_template['created_by']['username'] == 'writer'
         assert writer_template['updated_by']['username'] == 'writer'
+        assert writer_template['shared'] is False
+        assert writer_template['department_id'] == clients['writer'].get('/me').json()['department_id']
+        rename = clients['writer'].patch('/templates/' + writer_template_id, json={'name': writer_form['template_name'] + ' 已改'})
+        assert rename.status_code == 200, rename.text
     finally:
         admin.delete('/templates/' + writer_template_id)
     business_form = {**form, 'template_name': 'QA 商务人员入库 ' + uuid.uuid4().hex[:6]}

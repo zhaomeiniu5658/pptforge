@@ -269,6 +269,10 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
       if (importInput.current) importInput.current.value = "";
     }
   };
+  const openImportPicker = () => {
+    if (dirty) setConfirmImport(true);
+    else importInput.current?.click();
+  };
   const completeOptimization = async () => {
     setCompletingOptimization(true);
     setError("");
@@ -296,7 +300,7 @@ export function TemplateContentEditor({ template, onClose, onSaved }: any) {
           <button
             className="button"
             disabled={saving || importing || source !== null}
-            onClick={() => setConfirmImport(true)}
+            onClick={openImportPicker}
           >
             <Upload size={15} />
             {importing ? "导入中…" : "导入"}

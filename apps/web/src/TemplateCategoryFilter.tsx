@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { CategoryNode, categoryLabel } from "./categoryTree";
 
-type Category = { id: string; name: string };
+type Category = CategoryNode;
 
 export function TemplateCategoryFilter({
   categories,
@@ -88,8 +89,13 @@ export function TemplateCategoryFilter({
             />
             全部分类
           </label>
-          {categories.map((category) => (
-            <label key={category.id}>
+          {[...new Set(categories.map(c => c.department_name || "通用"))].map(department => (
+            <section key={department} className="category-filter-department">
+              <b>{department}</b>
+              {categories.filter(c => (c.department_name || "通用") === department && !c.parent_id).map(rootCategory => (
+                <div key={rootCategory.id}>
+                {[rootCategory, ...categories.filter(c => c.parent_id === rootCategory.id)].map(category => (
+            <label key={category.id} className={category.parent_id ? "category-filter-child" : ""} title={categoryLabel(category)}>
               <input
                 type="checkbox"
                 checked={selected.includes(category.id)}
@@ -103,7 +109,7 @@ export function TemplateCategoryFilter({
               />
               {category.name}
             </label>
-          ))}
+          ))}</div>))}</section>))}
         </div>
       )}
     </div>

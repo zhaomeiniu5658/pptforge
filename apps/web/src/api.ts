@@ -42,7 +42,7 @@ export async function api(
           : text.trim();
     if (r.status >= 500 && !detail)
       throw Error("后端服务不可用，请确认 API 服务已启动（8011）。");
-    throw Error(detail || `请求失败（HTTP ${r.status}）`);
+    throw Object.assign(Error(detail || `请求失败（HTTP ${r.status}）`), { status: r.status });
   }
   return r.json();
 }
