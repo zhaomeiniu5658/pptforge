@@ -76,19 +76,28 @@ const detailModalWidth = (detail: any) => {
 };
 function Login({ onLogin }: any) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [localLogin, setLocalLogin] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(() => new URLSearchParams(window.location.search).get("wecom_error") || "");
   const inWecom = /wxwork/i.test(navigator.userAgent);
   useEffect(() => {
-    api("/auth/wecom/config").then(value => setEnabled(value.enabled === true)).catch(() => {
+    api("/auth/wecom/config").then(value => { setEnabled(value.enabled === true); setLocalLogin(value.local_login === true); }).catch(() => {
       setEnabled(false); setError("暂时无法连接认证服务，请稍后重试。");
     });
   }, []);
   return <div className="login"><div className="login-story"><div className="brand light"><Layers3 />Quarkmed <span>夸克医药</span></div><div><div className="eyebrow">MODERN CLINICAL INTELLIGENCE</div><h1>让专业知识，<br />成为出色的方案。</h1><p>连接医学资产、专业团队与智能设计。</p><div className="login-pills"><span>标准化资产</span><span>跨部门协同</span><span>AI 辅助设计</span></div></div><small>QUARKMED · PPT / HTML 方案智造平台</small></div>
-    <section className="login-card"><div className="eyebrow">ENTERPRISE WORKSPACE</div><h2>{inWecom ? "企业微信身份验证" : "请在企业微信中打开"}</h2><p>{inWecom ? "使用当前企业微信身份进入您的工作台，无需输入账号密码。" : "请打开企业微信 → 工作台 → PPT 智造。"}</p>
+    <section className="login-card"><div className="eyebrow">ENTERPRISE WORKSPACE</div><h2>{localLogin ? "登录本地工作台" : inWecom ? "企业微信身份验证" : "请在企业微信中打开"}</h2><p>{localLogin ? "使用系统账号验证功能；有效企业微信会话可直接进入。" : inWecom ? "使用当前企业微信身份进入您的工作台，无需输入账号密码。" : "请打开企业微信 → 工作台 → PPT 智造。"}</p>
+      {localLogin && <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(""); try { onLogin(await api("/auth/login", { username, password })); } catch (error: any) { setError(error.message); } finally { setBusy(false); } }}>
+        <Field label="账号"><input autoComplete="username" required value={username} onChange={e => setUsername(e.target.value)} placeholder="请输入内部账号" /></Field>
+        <Field label="密码"><input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="请输入密码" /></Field>
+        <button className="primary full" disabled={busy}>{busy ? "登录中…" : "系统登录"}<ArrowRight size={17} /></button>
+      </form>}
       {error && <p className="error" role="alert">{error}</p>}
       {inWecom && enabled === false && !error && <p className="error">企业微信应用尚未配置完成，请联系管理员。</p>}
       {inWecom && <button type="button" className="primary full" disabled={enabled !== true} onClick={() => window.location.assign("/api/auth/wecom/start?next=" + encodeURIComponent(window.location.pathname))}>{enabled === null ? "正在连接企业微信…" : "验证企业微信身份"}<ArrowRight size={17} /></button>}
-      <p className="login-foot">仅支持企业微信身份登录</p>
+      <p className="login-foot">{localLogin ? "本地开发 · 系统登录 / 企业微信登录" : "仅支持企业微信身份登录"}</p>
     </section></div>;
 }
 const cachedSettings = () => {

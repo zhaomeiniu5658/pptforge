@@ -90,8 +90,19 @@ class LoginIn(BaseModel):
 
 
 @app.post("/api/auth/login")
-def login(body: LoginIn, response: Response, db=DB):
-    raise HTTPException(403, "账号密码登录已关闭，请通过企业微信工作台进入")
+def login(body: LoginIn, response: Response, request: Request = None, db=DB):
+    if not local_login_allowed(request):
+        raise HTTPException(403, "账号密码登录仅限本地开发环境，请通过企业微信工作台进入")
+    user = db.scalar(select(User).where(User.username == body.username, User.active == True))
+    if not user or not verify_password(body.password, user.password_hash):
+        raise HTTPException(401, "账号或密码错误")
+    token = secrets.token_urlsafe(32)
+    db.add(LoginSession(user_id=user.id, token_hash=token_hash(token),
+                        expires_at=now() + timedelta(hours=12), auth_provider="local_test"))
+    db.commit()
+    response.set_cookie("quark_session", token, httponly=True, samesite="lax", max_age=43200,
+                        secure=request.url.scheme == "https")
+    return asdict(user)
 
 
 @app.post("/api/auth/logout")

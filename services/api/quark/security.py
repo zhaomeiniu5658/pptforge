@@ -1,5 +1,6 @@
 import hashlib, secrets, base64, os
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy import select, or_
 from .db import SessionLocal, User, LoginSession, Project, Member, Booklet, WecomIdentity
@@ -34,8 +35,20 @@ def require_wecom_client(request):
         raise HTTPException(403, "请通过企业微信工作台进入 PPT 智造")
 
 
+def local_login_allowed(request):
+    if request is None or os.getenv("APP_ENV") != "local" or os.getenv("LOCAL_SYSTEM_LOGIN", "false").lower() != "true":
+        return False
+    loopback = {"localhost", "127.0.0.1", "::1"}
+    origin = request.headers.get("origin")
+    return (request.client is not None and request.client.host in loopback
+            and request.url.hostname in loopback
+            and (not origin or urlsplit(origin).hostname in loopback))
+
+
 def current_user(request: Request, db=Depends(db_session)):
-    require_wecom_client(request)
+    local_allowed = local_login_allowed(request)
+    if not local_allowed:
+        require_wecom_client(request)
     token = request.cookies.get("quark_session", "")
     session = db.scalar(
         select(LoginSession).where(
@@ -44,10 +57,11 @@ def current_user(request: Request, db=Depends(db_session)):
         )
     )
     corp_id = os.getenv("WECOM_CORP_ID", "").strip()
-    if (not session or session.auth_provider != "wecom" or not corp_id
+    local_session = session and session.auth_provider == "local_test" and local_allowed
+    if not local_session and (not session or session.auth_provider != "wecom" or not corp_id
             or session.auth_corp_id != corp_id):
         raise HTTPException(401, "请通过企业微信验证身份")
-    if not db.scalar(select(WecomIdentity.id).where(
+    if not local_session and not db.scalar(select(WecomIdentity.id).where(
             WecomIdentity.user_id == session.user_id, WecomIdentity.corp_id == corp_id)):
         raise HTTPException(401, "企业微信身份关联已失效，请联系管理员")
     user = db.get(User, session.user_id) if session else None

@@ -5,6 +5,8 @@ if [ "${QUARKMED_ENV_LOADED:-}" != "1" ]; then
  exec .venv/bin/python scripts/with-env.py bash "$0" "$@"
 fi
 export PYTHONPATH="$PWD/services/api"
+export APP_ENV=local
+export LOCAL_SYSTEM_LOGIN=true
 export SOFFICE_PATH="${SOFFICE_PATH:-$(command -v soffice || true)}"
 mkdir -p artifacts
 .venv/bin/alembic -c migrations/alembic.ini upgrade head

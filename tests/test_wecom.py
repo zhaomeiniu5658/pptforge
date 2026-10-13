@@ -129,9 +129,9 @@ def test_only_admin_can_bind(setup):
 
 def test_disabled_config_and_secrets_not_public(setup, monkeypatch):
     client, Session, app, calls = setup
-    assert client.get("/api/auth/wecom/config").json() == {"enabled": True, "required": True}
+    assert client.get("/api/auth/wecom/config").json() == {"enabled": True, "required": True, "local_login": False}
     monkeypatch.setenv("WECOM_ENABLED", "false")
-    assert client.get("/api/auth/wecom/config").json() == {"enabled": False, "required": True}
+    assert client.get("/api/auth/wecom/config").json() == {"enabled": False, "required": True, "local_login": False}
     assert client.get("/api/auth/wecom/start").status_code == 503
 
 
@@ -195,3 +195,21 @@ def test_password_login_is_disabled_without_consulting_database(monkeypatch):
     with pytest.raises(wecom.HTTPException) as exc:
         login(LoginIn(username="admin", password="unused"), Response(), db=None)
     assert exc.value.status_code == 403
+
+
+@pytest.mark.parametrize("environment,peer,host,origin,allowed", [
+    ("production", "127.0.0.1", "localhost:5174", "http://localhost:5174", False),
+    ("local", "127.0.0.1", "localhost:5174", "http://localhost:5174", True),
+    ("local", "192.168.1.2", "localhost:5174", "http://localhost:5174", False),
+    ("local", "127.0.0.1", "public.example", "https://public.example", False),
+    ("local", "127.0.0.1", "localhost:5174", "https://other.example", False),
+])
+def test_local_login_gate(monkeypatch, environment, peer, host, origin, allowed):
+    from starlette.requests import Request
+    from quark.security import local_login_allowed
+    monkeypatch.setenv("APP_ENV", environment)
+    monkeypatch.setenv("LOCAL_SYSTEM_LOGIN", "true")
+    request = Request({"type":"http", "method":"POST", "scheme":"http", "path":"/api/auth/login",
+                       "headers":[(b"host",host.encode()),(b"origin",origin.encode())],
+                       "client":(peer,12345), "server":("localhost",8011), "query_string":b""})
+    assert local_login_allowed(request) is allowed

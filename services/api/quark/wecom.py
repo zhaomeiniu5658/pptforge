@@ -15,7 +15,7 @@ from sqlalchemy import delete, select
 
 from .content import audit
 from .db import LoginSession, User, WecomIdentity, WecomLoginState, now
-from .security import admin, current_user, db_session, token_hash, require_wecom_client
+from .security import admin, current_user, db_session, token_hash, require_wecom_client, local_login_allowed
 
 router = APIRouter(prefix="/api/auth/wecom", tags=["WeCom"])
 STATE_COOKIE = "quark_wecom_state"
@@ -91,12 +91,12 @@ def access_token(settings):
 
 
 @router.get("/config")
-def public_config():
+def public_config(request: Request):
     try:
         config()
-        return {"enabled": True, "required": True}
+        return {"enabled": True, "required": True, "local_login": local_login_allowed(request)}
     except HTTPException:
-        return {"enabled": False, "required": True}
+        return {"enabled": False, "required": True, "local_login": local_login_allowed(request)}
 
 
 @router.get("/start")
