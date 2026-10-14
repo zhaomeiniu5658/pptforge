@@ -92,7 +92,7 @@ class LoginIn(BaseModel):
 @app.post("/api/auth/login")
 def login(body: LoginIn, response: Response, request: Request = None, db=DB):
     if not local_login_allowed(request):
-        raise HTTPException(403, "账号密码登录仅限本地开发环境，请通过企业微信工作台进入")
+        raise HTTPException(403, "账号密码登录尚未开放，请通过企业微信工作台进入")
     user = db.scalar(select(User).where(User.username == body.username, User.active == True))
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(401, "账号或密码错误")
@@ -282,6 +282,53 @@ class CategoryPatch(BaseModel):
     active: bool | None = None
     department_id: str | None = None
     parent_id: str | None = None
+
+
+class CategoryMove(BaseModel):
+    department_id: str | None = None
+    parent_id: str | None = None
+
+
+@app.post("/api/template-categories/{id}/move")
+def move_category(id: str, b: CategoryMove, u=USER, db=DB):
+    admin(u)
+    db.execute(text("SELECT pg_advisory_xact_lock(71340220)"))
+    rows = list(db.scalars(select(Category)))
+    by_id = {c.id: c for c in rows}
+    current = by_id.get(id)
+    if not current:
+        raise HTTPException(404, "分类不存在")
+    ids = descendants(rows, id)
+    if b.department_id and not db.get(Department, b.department_id):
+        raise HTTPException(422, "所属部门不存在")
+    if b.parent_id:
+        parent = by_id.get(b.parent_id)
+        if b.parent_id in ids:
+            raise HTTPException(422, "不能移动到自身或自己的下级分类中")
+        if not parent or parent.parent_id or len(ids) > 1:
+            raise HTTPException(422, "分类最多支持两级；有子分类的节点只能移动到部门下")
+        if parent.department_id != b.department_id:
+            raise HTTPException(422, "目标分类与部门不一致")
+        if current.active and not parent.active:
+            raise HTTPException(422, "启用分类不能移动到停用分类下")
+    # Check destination uniqueness before mutating the subtree or template access.
+    for node in rows:
+        if node.id not in ids and node.department_id == b.department_id and node.parent_id == b.parent_id and node.name == current.name:
+            raise HTTPException(409, "目标位置已有同名分类")
+    previous = {"department_id": current.department_id, "parent_id": current.parent_id}
+    scope_changed = current.department_id != b.department_id
+    current.parent_id = b.parent_id
+    for node in rows:
+        if node.id in ids:
+            node.department_id = b.department_id
+    templates = list(db.scalars(select(Template).where(Template.category_id.in_(ids)))) if scope_changed else []
+    for template in templates:
+        template.department_id = b.department_id
+        template.shared = b.department_id is None
+    audit(db, u, "category.move", id, {"from": previous, "to": b.model_dump(),
+                                      "categories": len(ids), "templates": len(templates)})
+    db.commit()
+    return {"id": id, "categories": len(ids), "templates": len(templates)}
 
 
 @app.post("/api/template-categories")
@@ -985,6 +1032,24 @@ def normalize_template_scope(db, u, department_id, shared):
     return department_id, shared
 
 
+def template_scope_from_category(db, u, category):
+    """Category is the source of truth for a template's department and visibility."""
+    department_id = category.department_id or None
+    if u.role != "admin" and department_id and department_id != u.department_id:
+        raise HTTPException(403, "只能选择您所属部门或通用的模板分类")
+    if u.role == "contributor" and (not department_id or department_id != u.department_id):
+        raise HTTPException(403, "只能选择您所属部门的模板分类")
+    validate_category(db, category.id, department_id)
+    return department_id, department_id is None
+
+
+def reject_explicit_scope_mismatch(requested_department, requested_shared, department_id, shared):
+    if requested_department is not None and (requested_department or None) != department_id:
+        raise HTTPException(422, "模板所属部门由模板分类确定")
+    if requested_shared is not None and bool(requested_shared) != shared:
+        raise HTTPException(422, "模板共享范围由模板分类确定")
+
+
 
 def latest_template_optimization_completion(db, template_id):
     return db.scalar(
@@ -1165,13 +1230,41 @@ def can_manage_scheme(u, scheme):
 
 
 @app.get("/api/ppt-schemes")
-def ppt_schemes(u=USER, db=DB):
-    rows = db.scalars(
+def ppt_schemes(summary: bool = False, u=USER, db=DB):
+    rows = list(db.scalars(
         select(PptScheme)
         .where(PptScheme.status != "deleted", PptScheme.active == True)
         .order_by(PptScheme.created_at.desc())
-    )
+    ))
+    if summary:
+        return ppt_scheme_summaries(db, rows)
     return [ppt_scheme_out(db, x) for x in rows]
+
+
+def ppt_scheme_summaries(db, schemes):
+    """Load only scheme metadata; full documents are loaded on preview."""
+    if not schemes:
+        return []
+    length = func.jsonb_array_length if db.get_bind().dialect.name == "postgresql" else func.json_array_length
+    # Fetch small metadata for all items in one query. JSON documents stay out of
+    # the list response so a large HTML page cannot block the library first paint.
+    metadata = list(db.execute(select(
+        PptSchemeItem, Template.name, length(TemplateVersion.documents),
+    ).join(Template, Template.id == PptSchemeItem.template_id)
+      .join(TemplateVersion, TemplateVersion.id == PptSchemeItem.template_version_id)
+      .where(PptSchemeItem.scheme_id.in_([s.id for s in schemes]))
+      .order_by(PptSchemeItem.scheme_id, PptSchemeItem.position)))
+    grouped = {}
+    for item, name, pages in metadata:
+        if item.scheme_id not in grouped:
+            grouped[item.scheme_id] = []
+        grouped[item.scheme_id].append({**asdict(item), "template_name": name, "page_count": pages or 0})
+    result = []
+    for scheme in schemes:
+        items = grouped.get(scheme.id, [])
+        result.append({**asdict(scheme), "items": items, "template_count": len(items),
+                       "page_count": sum(item["page_count"] for item in items)})
+    return result
 
 
 @app.post("/api/ppt-schemes")
@@ -1440,8 +1533,6 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         category = db.get(Category, b.category_id) if b.category_id else None
         if not category or (not category.active and b.category_id != t.category_id):
             raise HTTPException(422, "请选择有效的模板分类")
-    if b.department_id and not db.get(Department, b.department_id):
-        raise HTTPException(422, "部门不存在")
     if "name" in b.model_fields_set and (b.name is None or not b.name.strip()):
         raise HTTPException(422, "模板标题不能为空")
     changes = b.model_dump(exclude_unset=True)
@@ -1449,12 +1540,16 @@ def patch_template(id: str, b: TemplatePatch, u=USER, db=DB):
         raise HTTPException(403, "启用或停用模板需要管理员权限")
     if "name" in changes:
         changes["name"] = changes["name"].strip()
-    if "department_id" in changes or "shared" in changes:
-        normalized_department, normalized_shared = normalize_template_scope(
-            db,
-            u,
-            changes.get("department_id", t.department_id),
-            bool(changes.get("shared", t.shared)),
+    if {"category_id", "department_id", "shared"}.intersection(changes):
+        category = db.get(Category, changes.get("category_id", t.category_id))
+        if not category:
+            raise HTTPException(422, "请选择有效的模板分类")
+        normalized_department, normalized_shared = template_scope_from_category(db, u, category)
+        reject_explicit_scope_mismatch(
+            changes.get("department_id") if "department_id" in changes else None,
+            changes.get("shared") if "shared" in changes else None,
+            normalized_department,
+            normalized_shared,
         )
         changes["department_id"] = normalized_department
         changes["shared"] = normalized_shared
@@ -2015,7 +2110,7 @@ async def template_import(
     files: list[UploadFile] = File(...),
     category_id: str = Form(...),
     department_id: str | None = Form(None),
-    shared: bool = Form(True),
+    shared: bool | None = Form(None),
     input_mode: Literal["files", "folder"] = Form("files"),
     template_name: str = Form(""),
     u=USER,
@@ -2025,8 +2120,9 @@ async def template_import(
     category = db.get(Category, category_id)
     if not category or not category.active:
         raise HTTPException(422, "请选择启用的模板分类")
-    department_id, shared = normalize_template_scope(db, u, department_id, shared)
-    validate_category(db, category_id, department_id)
+    computed_department, computed_shared = template_scope_from_category(db, u, category)
+    reject_explicit_scope_mismatch(department_id, shared, computed_department, computed_shared)
+    department_id, shared = computed_department, computed_shared
     if len(files) > (MAX_FILES if input_mode == "folder" else 10):
         raise HTTPException(422, "文件夹最多 500 个文件；批量导入最多 10 个文件/压缩包")
     if len(template_name) > 200:

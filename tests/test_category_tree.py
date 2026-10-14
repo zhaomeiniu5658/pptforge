@@ -111,6 +111,44 @@ def test_non_admin_cannot_create_and_whitespace_rejected(setup):
     assert c.post("/api/template-categories",json={"name":"test","department_id":a}).status_code==403
 
 
+def test_template_edit_uses_category_scope_and_blocks_manual_override(setup):
+    c, factory, a, b, user = setup
+    public = add(c, None, "通用")
+    own = add(c, a, "部门分类")
+    other = add(c, b, "其他部门分类")
+    with factory() as db:
+        template = Template(name="模板", category_id=public['id'], department_id=None, shared=True)
+        db.add(template);db.commit();tid=template.id
+    r=c.patch('/api/templates/'+tid,json={'category_id':own['id']})
+    assert r.status_code==200,r.text
+    with factory() as db:
+        t=db.get(Template,tid);assert t.department_id==a and t.shared is False
+    assert c.patch('/api/templates/'+tid,json={'category_id':other['id'],'department_id':a}).status_code==422
+    assert c.patch('/api/templates/'+tid,json={'shared':True}).status_code==422
+    assert c.patch('/api/templates/'+tid,json={'category_id':public['id']}).status_code==200
+    with factory() as db:
+        t=db.get(Template,tid);assert t.department_id is None and t.shared is True
+    user.role='contributor';user.department_id=a
+    from quark.main import template_scope_from_category
+    with factory() as db:
+        with pytest.raises(Exception) as exc:template_scope_from_category(db,user,db.get(Category,other['id']))
+        assert exc.value.status_code==403
+
+
+def test_import_derives_scope_without_department_or_shared_fields(setup, monkeypatch):
+    from quark import main
+    from types import SimpleNamespace
+    c, factory, a, b, user=setup
+    category=add(c,a)
+    monkeypatch.setattr(main,'store_asset',lambda *args:SimpleNamespace(id='test-asset'))
+    monkeypatch.setattr(main,'dispatch',lambda db,u,kind,payload:payload)
+    r=c.post('/api/templates/imports',data={'category_id':category['id']},files={'files':('test.html',b'<main>test</main>','text/html')})
+    assert r.status_code==202,r.text
+    assert r.json()[0]['department_id']==a and r.json()[0]['shared'] is False
+    user.role='contributor';user.department_id=b
+    assert c.post('/api/templates/imports',data={'category_id':category['id']},files={'files':('test.html',b'<main>test</main>','text/html')}).status_code==403
+
+
 def test_delete_unused_subtree_and_preserve_linked_history(setup):
     c, factory, a, b, user = setup
     root = add(c, a)
@@ -165,3 +203,47 @@ def test_department_only_templates_exclude_other_departments_and_public(setup, m
     assert c.get("/api/templates?department_only=1").json() == [{"department_id": a}]
     user.department_id = None
     assert c.get("/api/templates?department_only=1").json() == []
+
+
+def test_drag_moves_up_down_and_subtree_between_departments(setup):
+    c, factory, a, b, user = setup
+    root = add(c, a, "根分类")
+    leaf = add(c, a, "可移动")
+    move = lambda id, department, parent=None: c.post('/api/template-categories/'+id+'/move', json={'department_id':department, 'parent_id':parent})
+    assert move(leaf['id'], a, root['id']).status_code == 200
+    assert move(leaf['id'], a).status_code == 200
+    assert move(leaf['id'], a, root['id']).status_code == 200
+    with factory() as db:
+        live = Template(name='关联模板', category_id=leaf['id'], department_id=a, shared=False)
+        history = Template(name='已删除模板', category_id=root['id'], department_id=a, shared=False, status='deleted')
+        db.add_all([live, history]); db.commit(); tids=[live.id, history.id]
+    result=move(root['id'], b)
+    assert result.status_code==200 and result.json()['templates']==2
+    with factory() as db:
+        assert db.get(Category,leaf['id']).parent_id==root['id']
+        assert all(db.get(Category,id).department_id==b for id in [root['id'],leaf['id']])
+        assert all(db.get(Template,id).department_id==b and not db.get(Template,id).shared for id in tids)
+    assert move(root['id'],None).status_code==200
+    with factory() as db:
+        assert all(db.get(Template,id).department_id is None and db.get(Template,id).shared for id in tids)
+        assert db.scalar(select(Audit).where(Audit.action=='category.move'))
+
+
+def test_drag_rejects_cycles_third_level_duplicates_and_nonadmin_without_mutation(setup):
+    c, factory, a, b, user=setup
+    root=add(c,a,'根');child=add(c,a,'子',root['id']);target=add(c,b,'目标');other=add(c,b,'根')
+    move=lambda id, department, parent=None:c.post('/api/template-categories/'+id+'/move',json={'department_id':department,'parent_id':parent})
+    assert move(root['id'],a,child['id']).status_code==422
+    assert move(root['id'],b,target['id']).status_code==422
+    assert move(root['id'],b).status_code==409
+    assert move(child['id'],a,child['id']).status_code==422
+    assert move(child['id'],a,target['id']).status_code==422
+    assert move(child['id'],'missing').status_code==422
+    assert move('missing',a).status_code==404
+    c.patch('/api/template-categories/'+target['id'],json={'active':False})
+    assert move(child['id'],b,target['id']).status_code==422
+    with factory() as db:
+        assert db.get(Category,root['id']).department_id==a
+        assert db.get(Category,child['id']).parent_id==root['id']
+    user.role='contributor'
+    assert move(child['id'],b).status_code==403

@@ -16,6 +16,7 @@ from quark.security import current_user, db_session
 
 @pytest.fixture
 def setup(monkeypatch):
+    monkeypatch.setenv("PUBLIC_SYSTEM_LOGIN", "false")
     for key, value in dict(ENABLED="true", CORP_ID="ww-test", AGENT_ID="10001",
                            SECRET="private-test-secret", CALLBACK_URL="https://ppt.example/api/auth/wecom/callback").items():
         monkeypatch.setenv("WECOM_" + key, value)
@@ -44,6 +45,31 @@ def setup(monkeypatch):
     with TestClient(app, base_url="https://ppt.example", headers={"user-agent":"Mozilla/5.0 wxwork/4.1.0"}, follow_redirects=False) as client:
         yield client, Session, app, calls
     engine.dispose()
+
+
+def test_public_password_login_mode(setup, monkeypatch):
+    client, Session, app, calls = setup
+    from quark.main import login
+    from quark.security import hash_password
+    monkeypatch.setenv("PUBLIC_SYSTEM_LOGIN", "true")
+    monkeypatch.setenv("LOCAL_SYSTEM_LOGIN", "true")
+    monkeypatch.setenv("WECOM_ENABLED", "false")
+    monkeypatch.setenv("WEB_ORIGIN", "https://ppt.example")
+    app.post("/api/auth/login")(login)
+    @app.get("/protected")
+    def protected(user=__import__("fastapi").Depends(current_user)):
+        return {"username": user.username}
+    with Session() as db:
+        db.scalar(select(User)).password_hash = hash_password("test-password")
+        db.commit()
+    client.headers["user-agent"] = "Chrome"
+    assert client.get("/api/auth/wecom/config").json() == {"enabled": False, "required": False, "local_login": True}
+    assert client.get("/protected").status_code == 401
+    assert client.post("/api/auth/login", json={"username":"staff", "password":"wrong"}).status_code == 401
+    assert client.post("/api/auth/login", json={"username":"staff", "password":"test-password"}).status_code == 200
+    assert client.get("/protected").status_code == 200
+    monkeypatch.setenv("PUBLIC_SYSTEM_LOGIN", "false")
+    assert client.get("/protected").status_code == 403
 
 
 def begin(client, next="/"):

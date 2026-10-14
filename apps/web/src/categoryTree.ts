@@ -21,3 +21,11 @@ export function availableCategories(categories: CategoryNode[], department: stri
   return categories.filter(c => c.active && (!c.department_id || c.department_id === department)
     && (!c.parent_id || categories.some(p => p.id === c.parent_id && p.active)));
 }
+
+export function templateCategoryOptions(categories: CategoryNode[], user?: { role: string; department_id?: string | null }) {
+  return categories.filter(c => c.active
+    && (!c.parent_id || categories.some(p => p.id === c.parent_id && p.active))
+    && (user?.role === "admin" || (user?.role === "contributor"
+      ? Boolean(user.department_id) && c.department_id === user.department_id
+      : !c.department_id || c.department_id === user?.department_id)));
+}

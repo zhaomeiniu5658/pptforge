@@ -14,6 +14,7 @@ def import_catalog(db):
     added = 0
     missing = []
     for department_name, roots in CATALOG.items():
+        department_name = {"临床运营部": "临床运营中心", "质量管理部": "质量保证部"}.get(department_name, department_name)
         department = db.scalar(select(Department).where(Department.name == department_name))
         if not department:
             missing.append(department_name)

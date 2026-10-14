@@ -2,11 +2,11 @@ import { useState } from "react";
 import { FileUp, FolderUp } from "lucide-react";
 import { api } from "./api";
 import { Modal, Field } from "./components";
-import { CategoryNode, availableCategories, categoryLabel } from "./categoryTree";
+import { CategoryNode } from "./categoryTree";
+import { CategoryCascade } from "./CategoryCascade";
 
 export function TemplateImportDialog({
   categories,
-  departments,
   user,
   onClose,
   onImported,
@@ -20,15 +20,7 @@ export function TemplateImportDialog({
   const [mode, setMode] = useState<"files" | "folder">("files");
   const [files, setFiles] = useState<File[]>([]);
   const [name, setName] = useState("");
-  const initialDepartment = user?.role === "admin" ? "" : user?.department_id || "";
-  const [department, setDepartment] = useState(initialDepartment);
   const [category, setCategory] = useState("");
-  const selectableCategories = availableCategories(categories, department);
-  const [shared, setShared] = useState(true);
-  const visibleDepartments =
-    user?.role === "admin"
-      ? departments
-      : departments.filter((department) => department.id === user?.department_id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const size = files.reduce((sum, file) => sum + file.size, 0);
@@ -64,8 +56,6 @@ export function TemplateImportDialog({
             form.append("input_mode", mode);
             form.append("template_name", name);
             form.append("category_id", category);
-            if (department) form.append("department_id", department);
-            form.append("shared", String(shared));
             const jobs = await api("/templates/imports", form);
             onImported(jobs);
           } catch (e: any) {
@@ -172,47 +162,7 @@ export function TemplateImportDialog({
               />
             </Field>
           )}
-          <Field label="模板分类">
-            <select
-              required
-              value={category}
-              disabled={busy}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="" disabled>
-                请选择分类
-              </option>
-              {selectableCategories
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {categoryLabel(c)}
-                  </option>
-                ))}
-            </select>
-          </Field>
-          <Field label="归属部门">
-            <select
-              value={department}
-              disabled={busy || user?.role === "contributor"}
-              onChange={(e) => { setDepartment(e.target.value); setCategory(""); }}
-            >
-              {user?.role !== "contributor" && <option value="">平台公共资产</option>}
-              {visibleDepartments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={shared}
-              disabled={busy}
-              onChange={(e) => setShared(e.target.checked)}
-            />
-            跨部门共享
-          </label>
+          <CategoryCascade categories={categories} user={user} value={category} onChange={setCategory} disabled={busy} />
           {error && (
             <p className="error" role="alert">
               {error}

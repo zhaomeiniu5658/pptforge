@@ -92,11 +92,12 @@ def access_token(settings):
 
 @router.get("/config")
 def public_config(request: Request):
+    local_allowed = local_login_allowed(request)
     try:
         config()
-        return {"enabled": True, "required": True, "local_login": local_login_allowed(request)}
+        return {"enabled": True, "required": not local_allowed, "local_login": local_allowed}
     except HTTPException:
-        return {"enabled": False, "required": True, "local_login": local_login_allowed(request)}
+        return {"enabled": False, "required": not local_allowed, "local_login": local_allowed}
 
 
 @router.get("/start")

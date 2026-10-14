@@ -18,14 +18,19 @@ import { Empty, Modal, Preview } from "./components";
 import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
 import { useApp } from "./App";
 
-function useLoad(path: string) {
+function useLoad(path: string | null) {
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState("");
   const { run } = useApp();
-  const load = () => run(async () => setData(await api(path)));
+  const load = () => path && run(async () => {
+    setError("");
+    try { setData(await api(path)); }
+    catch (e: any) { setError(e.message); throw e; }
+  });
   useEffect(() => {
     load();
   }, [path]);
-  return [data, load] as const;
+  return [data, load, error] as const;
 }
 
 function SchemeBuilder({
@@ -301,21 +306,29 @@ export function PptSchemeLibrary() {
   const { user, notify } = useApp();
   const location = useLocation();
   const templateIdsFromUrl = new URLSearchParams(location.search).get("template_ids");
-  const [schemes, reload] = useLoad("/ppt-schemes");
-  const [templates] = useLoad("/templates");
-  const [categories] = useLoad("/template-categories");
+  const [schemes, reload, loadError] = useLoad("/ppt-schemes?summary=true");
   const [query, setQuery] = useState("");
   const [builder, setBuilder] = useState<any>(() => {
     const ids = templateIdsFromUrl;
     return ids ? { template_ids: ids.split(",").filter(Boolean) } : null;
   });
+  const [templates, , templateError] = useLoad(builder ? "/templates" : null);
+  const [categories, , categoryError] = useLoad(builder ? "/template-categories" : null);
   const [preview, setPreview] = useState<any>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const filtered = (schemes || []).filter((scheme: any) =>
     scheme.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
   const isAdmin = user.role === "admin";
+  const openPreview = async (scheme: any) => {
+    if (previewLoading) return;
+    setPreviewLoading(true);
+    try { setPreview(await api(`/ppt-schemes/${scheme.id}`)); }
+    catch (e: any) { notify(e.message); }
+    finally { setPreviewLoading(false); }
+  };
   useEffect(() => {
     const ids = templateIdsFromUrl;
     if (ids) {
@@ -372,19 +385,11 @@ export function PptSchemeLibrary() {
         </div>
         <div className="ppt-scheme-grid">
           {filtered.map((scheme: any) => {
-            const first = scheme.items?.[0]?.template?.documents?.[0];
-            const pages = scheme.items?.reduce(
-              (count: number, item: any) => count + item.template.documents.length,
-              0,
-            );
+            const pages = scheme.page_count;
             return (
               <article className="ppt-scheme-card" key={scheme.id}>
-                <button className="ppt-scheme-card-preview" onClick={() => setPreview(scheme)}>
-                  {first ? (
-                    <Preview document={first} mini miniViewportWidth={1520} miniViewportHeight={900} />
-                  ) : (
-                    <div className="ppt-scheme-card-empty">暂无预览</div>
-                  )}
+                <button className="ppt-scheme-card-preview" disabled={previewLoading} onClick={() => openPreview(scheme)}>
+                  <div className="ppt-scheme-card-empty"><Layers3 size={22} />点击查看方案预览</div>
                   <span className="ppt-scheme-card-count">{scheme.template_count} 个模板 · {pages} 页</span>
                 </button>
                 <div className="ppt-scheme-card-body">
@@ -395,7 +400,7 @@ export function PptSchemeLibrary() {
                     <span>{new Date(scheme.created_at).toLocaleDateString("zh-CN")}</span>
                   </div>
                   <div className="ppt-scheme-card-actions">
-                    <button className="icon" data-tooltip="预览" aria-label={`预览方案 ${scheme.name}`} onClick={() => setPreview(scheme)}>
+                    <button className="icon" data-tooltip="预览" disabled={previewLoading} aria-label={`预览方案 ${scheme.name}`} onClick={() => openPreview(scheme)}>
                       <Eye size={16} />
                     </button>
                     <button className="icon" data-tooltip="下载" aria-label={`下载方案 ${scheme.name}`} onClick={async () => {
@@ -424,10 +429,13 @@ export function PptSchemeLibrary() {
             );
           })}
         </div>
-        {!schemes && <div className="loading">载入 PPT 方案库…</div>}
+        {!schemes && !loadError && <div className="loading">载入 PPT 方案库…</div>}
+        {loadError && <div className="loading"><p className="error" role="alert">{loadError}</p><button onClick={reload}>重新加载</button></div>}
+        {previewLoading && <p className="muted" role="status">正在加载方案预览…</p>}
         {schemes && !filtered.length && <Empty>暂无 PPT 方案，管理员可以从单个模板创建方案。</Empty>}
       </div>
-      {builder && (
+      {builder && (!templates || !categories) && <Modal title={builder.id ? "编辑 PPT 方案" : "新建 PPT 方案"} onClose={() => setBuilder(null)}><div className="modal-body"><p role="status">{templateError || categoryError || "正在加载可选模板…"}</p></div></Modal>}
+      {builder && templates && categories && (
         <SchemeBuilder
           key={builder.id || builder.template_ids?.join(",") || "new"}
           templates={templates || []}

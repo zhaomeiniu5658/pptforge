@@ -3738,6 +3738,14 @@ td small {
 .classification-node.selected { background:#edf2ff; }
 .classification-node.selected .classification-select { color:#245ee0; font-weight:600; }
 .classification-node.inactive .classification-select { color:#98a4b5; }
+.classification-node[draggable="true"] { cursor: grab; }
+.classification-node.dragging { opacity: .45; }
+.classification-node.drop-target, .classification-card.drop-target { background: #eaf2ff; outline: 2px solid #2563eb; outline-offset: -2px; }
+.classification-node.drop-invalid, .classification-card.drop-invalid { background: #fff1f2; outline: 1px dashed #dc6c77; outline-offset: -1px; }
+.classification-drag-handle { flex-shrink: 0; color: #a5b4ca; opacity: 0; }
+.classification-node:hover .classification-drag-handle, .classification-node.dragging .classification-drag-handle { opacity: 1; }
+.classification-move-status { padding: 10px 14px; background: #eff6ff; color: #245ee0; border-radius: 8px; }
+.classification-promote { width: 100%; margin-bottom: 16px; border: 2px dashed #93b4ef; background: #f3f7ff; color: #2563eb; min-height: 48px; }
 .classification-toggle, .classification-dot { flex:0 0 18px; width:18px; display:flex; justify-content:center; align-items:center; color:#8b98a9; }
 .classification-node .classification-toggle { padding:0; background:transparent; border:0; border-radius:4px; min-height:26px; }
 .classification-node .classification-select { flex:1; min-width:0; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:8px 0; text-align:left; background:transparent; border:0; font-size:13px; color:#40516c; box-shadow:none; }

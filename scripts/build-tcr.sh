@@ -21,5 +21,5 @@ for component in web api tools; do
   docker buildx build --platform linux/amd64 \
     -f "deploy/$component.Dockerfile" \
     -t "$TCR_REGISTRY/$TCR_NAMESPACE/ppt-creation-$component:$IMAGE_VERSION" \
-    "${args[@]}" "--$BUILD_ACTION" .
+    ${args[@]+"${args[@]}"} "--$BUILD_ACTION" .
 done

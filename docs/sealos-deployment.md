@@ -1,12 +1,17 @@
+> Release update 2026-10-13: `20261013-r2-c975756a` is running on the same Sealos application and URL. This release includes current uncommitted workspace changes. Production retains temporary system-password login; WeCom OAuth is currently disabled. Existing administrator session, protected APIs, rendering and data integrity checks passed. Fresh password entry was not tested. Backup: `backups/sealos-update-20261013-r2-c975756a`. Evidence: `.sealos/update-20261013-r2/`. The earlier release notes below are historical.
+
 # PPT 智造：腾讯云 TCR → Sealos
 
-## 本次准备结果
+## 当前部署（2026-10-13）
 
-- 目标 Sealos：杭州 `https://hzh.sealos.run`，工作区 `ns-udky0j90`。
-- TCR：`ccr.ccs.tencentyun.com/tenvoice`，三个独立私有仓库。
-- 版本：`20260930-e907b7f`，平台 `linux/amd64`。
-- 镜像名：`ppt-creation-web`、`ppt-creation-api`、`ppt-creation-tools`；Worker 复用 API 镜像。
-- Sealos 应用尚未创建：等待 kompose 安装确认及首次部署的数据处理选择。
+- Sealos：杭州工作区 `ns-udky0j90`，原应用 `ppt-creation-qcofpnoo` 已更新。
+- 公网地址：https://ppt-creation-hhglmetl.sealoshzh.site （原地址保持不变）。
+- TCR：`ccr.ccs.tencentyun.com/tenvoice`，版本 `20261013-825b117`，平台 `linux/amd64`。
+- Web、API、Worker、Tools 已完成更新；数据库迁移到 `0009`。
+- 更新前备份：`backups/sealos-update-20261013-825b117`，包含数据库、资产和回滚配置；含敏感配置，仅本地保管。
+- 完整性：24 张既有业务表指纹一致，149 个资产文件 SHA256 一致；165 个账号、104 个项目、139 个模板、205 个页面、8 个 PPT 方案保留。
+- 公网首页、健康检查、企业微信授权跳转、Chromium 渲染、日志及资源运行检查通过。
+- 生产环境仅支持企业微信登录，凭据已验证；员工 UserID 关联数量为 0。真实员工登录与登录后的业务验收尚待完成，不视为完整登录验收通过。
 
 ## 构建与推送
 
@@ -14,7 +19,7 @@
 
 ```bash
 docker login ccr.ccs.tencentyun.com
-TCR_NAMESPACE=tenvoice IMAGE_VERSION=20260930-e907b7f bash scripts/build-tcr.sh
+TCR_NAMESPACE=tenvoice IMAGE_VERSION=20261013-825b117 bash scripts/build-tcr.sh
 ```
 
 Docker Hub 不可达时可以显式选择可用的基础镜像镜像站：
@@ -50,9 +55,9 @@ HTTPS 公网地址写入 `WEB_ORIGIN` 并设置 `COOKIE_SECURE=true`。优先使
 
 渲染服务 `/health` 也需要 `x-tool-secret` 请求头；使用读取环境变量的 exec 探针，不将实际密钥写进探针配置。Worker 不使用 API 的 HTTP 探针。
 
-## 已完成的本地验证
+## 本次验证
 
-三个 amd64 镜像均成功构建。隔离容器验证：数据库迁移达到 `0006`；API 健康、管理员登录、个人信息、项目、模板、PPT 方案库均返回 200；Chromium 成功渲染中文测试页。13 项 HTML 引擎测试通过。本地验证不代表 Sealos 公网部署验收通过。
+16 项 HTML 引擎测试和 39 项企业微信、分类树测试通过。云端备份在隔离 PostgreSQL 中完成迁移演练后，再更新生产应用。生产验证证据保存在 `.sealos/update-20261013/`，状态记录在 `.sealos/state.json`；尚待员工身份关联与真实登录验收。
 
 ## 首次数据与后续更新
 

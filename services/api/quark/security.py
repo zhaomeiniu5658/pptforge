@@ -36,7 +36,15 @@ def require_wecom_client(request):
 
 
 def local_login_allowed(request):
-    if request is None or os.getenv("APP_ENV") != "local" or os.getenv("LOCAL_SYSTEM_LOGIN", "false").lower() != "true":
+    if request is None or os.getenv("LOCAL_SYSTEM_LOGIN", "false").lower() != "true":
+        return False
+    # A deliberate temporary mode for putting the site in the WeCom workbench
+    # before OAuth trusted-domain verification is available. Keep it off in the
+    # production example; when enabled, system-password sessions remain the
+    # authentication method until WeCom OAuth is turned back on.
+    if os.getenv("PUBLIC_SYSTEM_LOGIN", "false").lower() == "true":
+        return True
+    if os.getenv("APP_ENV") != "local":
         return False
     loopback = {"localhost", "127.0.0.1", "::1"}
     origin = request.headers.get("origin")

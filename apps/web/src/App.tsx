@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ContributorWorkspace } from "./ContributorWorkspace";
 import {
   BrowserRouter,
   Routes,
@@ -54,10 +55,11 @@ import { Models } from "./Models";
 import { ProjectManagement } from "./ProjectManagement";
 import { TemplateImportDialog } from "./TemplateImportDialog";
 import { TemplateContentEditor } from "./TemplateContentEditor";
+import { CategoryCascade } from "./CategoryCascade";
 import { TemplateCategoryFilter } from "./TemplateCategoryFilter";
 import { CategoryManagement } from "./CategoryManagement";
 import { TemplateLibraryTree } from "./TemplateLibraryTree";
-import { categoryIds, categoryLabel, availableCategories } from "./categoryTree";
+import { categoryIds, categoryLabel } from "./categoryTree";
 import { PptSchemeLibrary } from "./PptSchemeLibrary";
 import "./style.css";
 export const Context = React.createContext<any>(null);
@@ -87,17 +89,17 @@ function Login({ onLogin }: any) {
       setEnabled(false); setError("暂时无法连接认证服务，请稍后重试。");
     });
   }, []);
-  return <div className="login"><div className="login-story"><div className="brand light"><Layers3 />Quarkmed <span>夸克医药</span></div><div><div className="eyebrow">MODERN CLINICAL INTELLIGENCE</div><h1>让专业知识，<br />成为出色的方案。</h1><p>连接医学资产、专业团队与智能设计。</p><div className="login-pills"><span>标准化资产</span><span>跨部门协同</span><span>AI 辅助设计</span></div></div><small>QUARKMED · PPT / HTML 方案智造平台</small></div>
-    <section className="login-card"><div className="eyebrow">ENTERPRISE WORKSPACE</div><h2>{localLogin ? "登录本地工作台" : inWecom ? "企业微信身份验证" : "请在企业微信中打开"}</h2><p>{localLogin ? "使用系统账号验证功能；有效企业微信会话可直接进入。" : inWecom ? "使用当前企业微信身份进入您的工作台，无需输入账号密码。" : "请打开企业微信 → 工作台 → PPT 智造。"}</p>
+  return <div className="login"><div className="login-story"><div className="brand light"><Layers3 />Quarkmed <span>夸克医药</span></div><div><div className="eyebrow">MODERN CLINICAL INTELLIGENCE</div><h1>让专业知识，<br />成为出色的方案。</h1><p>连接医学资产、专业团队与智能设计。</p><div className="login-pills"><span>标准化资产</span><span>跨部门协同</span><span>AI 辅助设计</span></div></div><small>QUARKMED · PPT / HTML</small></div>
+    <section className="login-card"><div className="eyebrow">ENTERPRISE WORKSPACE</div><h2>{localLogin ? "登录工作台" : inWecom ? "企业微信身份验证" : "请在企业微信中打开"}</h2><p>{localLogin ? "使用系统账号和密码进入您的工作台。" : inWecom ? "使用当前企业微信身份进入您的工作台，无需输入账号密码。" : "请打开企业微信 → 工作台 → PPT 智造。"}</p>
       {localLogin && <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(""); try { onLogin(await api("/auth/login", { username, password })); } catch (error: any) { setError(error.message); } finally { setBusy(false); } }}>
         <Field label="账号"><input autoComplete="username" required value={username} onChange={e => setUsername(e.target.value)} placeholder="请输入内部账号" /></Field>
         <Field label="密码"><input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="请输入密码" /></Field>
         <button className="primary full" disabled={busy}>{busy ? "登录中…" : "系统登录"}<ArrowRight size={17} /></button>
       </form>}
       {error && <p className="error" role="alert">{error}</p>}
-      {inWecom && enabled === false && !error && <p className="error">企业微信应用尚未配置完成，请联系管理员。</p>}
-      {inWecom && <button type="button" className="primary full" disabled={enabled !== true} onClick={() => window.location.assign("/api/auth/wecom/start?next=" + encodeURIComponent(window.location.pathname))}>{enabled === null ? "正在连接企业微信…" : "验证企业微信身份"}<ArrowRight size={17} /></button>}
-      <p className="login-foot">{localLogin ? "本地开发 · 系统登录 / 企业微信登录" : "仅支持企业微信身份登录"}</p>
+      {inWecom && enabled === false && !localLogin && !error && <p className="error">企业微信应用尚未配置完成，请联系管理员。</p>}
+      {inWecom && enabled !== false && <button type="button" className="primary full" disabled={enabled !== true} onClick={() => window.location.assign("/api/auth/wecom/start?next=" + encodeURIComponent(window.location.pathname))}>{enabled === null ? "正在连接企业微信…" : "验证企业微信身份"}<ArrowRight size={17} /></button>}
+      <p className="login-foot">{localLogin ? "系统账号登录" : "仅支持企业微信身份登录"}</p>
     </section></div>;
 }
 const cachedSettings = () => {
@@ -182,7 +184,7 @@ function Shell() {
       <Login
         onLogin={(u: any) => {
           setUser(u);
-          nav(u.role === "contributor" ? "/projects" : "/");
+          nav(u.role === "contributor" ? "/workspace" : "/");
         }}
       />
     );
@@ -190,13 +192,12 @@ function Shell() {
     <Context.Provider value={{ user, notify: setNotice, run, settings, setSettings }}>
       <div className="app">
         <header className="topbar">
-          <Link className="brand" to={user.role === "admin" ? "/" : "/projects"}>
+          <Link className="brand" to={user.role === "admin" ? "/" : user.role === "contributor" ? "/workspace" : "/projects"}>
             <Layers3 size={28} />
             <strong>Quarkmed</strong>
             <span>夸克医药</span>
           </Link>
           <div className="brand-divider" />
-          <span className="product-name">方案智造平台</span>
           <nav>
             {(user.role === "admin"
               ? [
@@ -210,6 +211,7 @@ function Shell() {
                 ]
               : user.role === "contributor"
                 ? [
+                    ["/workspace", "工作台"],
                     ["/projects", "项目管理"],
                     ["/templates", "模板库"],
                   ]
@@ -276,10 +278,11 @@ function Shell() {
           <Route
             path="/"
             element={
-              user.role === "admin" ? <Dashboard /> : <Navigate to="/projects" />
+              user.role === "admin" ? <Dashboard /> : <Navigate to={user.role === "contributor" ? "/workspace" : "/projects"} />
             }
           />
           <Route path="/projects" element={<ProjectManagement />} />
+          <Route path="/workspace" element={user.role === "contributor" ? <ContributorWorkspace /> : <Navigate to="/" />} />
           <Route path="/projects/new" element={<Wizard />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/booklets/:id" element={<Editor />} />
@@ -1484,11 +1487,11 @@ function TemplateCardPreview({ template, children }: { template: any; children?:
 function Templates() {
   const { user, run, notify } = useApp();
   const navigate = useNavigate();
-  const [templates, reload] = useLoad("/templates?summary=1" + (user.role !== "admin" ? "&department_only=1" : ""));
-  const [cats] = useLoad("/template-categories" + (user.role !== "admin" ? "?department_only=1" : ""));
+  const [templates, reload] = useLoad("/templates?summary=1");
+  const [cats] = useLoad("/template-categories");
   const [deps] = useLoad("/departments");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState(user.role === "admin" ? "all" : user.department_id || "none");
+  const [selectedDepartmentGroup, setSelectedDepartmentGroup] = useState(user.role === "admin" ? "all" : user.department_id || "public");
   const [selectedTemplateStatus, setSelectedTemplateStatus] = useState("all");
   const [q, setQ] = useState("");
   const [ingest, setIngest] = useState(false);
@@ -1506,12 +1509,11 @@ function Templates() {
   const [downloadSelection, setDownloadSelection] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
   const [optimizingTemplateId, setOptimizingTemplateId] = useState("");
-  const visibleCategories = (cats || []).filter((c: any) => user.role === "admin" || (c.active && c.department_id === user.department_id));
+  const visibleCategories = (cats || []).filter((c: any) => user.role === "admin" || (c.active && (!c.department_id || c.department_id === user.department_id)));
   const departmentMatch = (template: any) => {
-    if (user.role !== "admin") return Boolean(user.department_id) && template.department_id === user.department_id;
     if (selectedDepartmentGroup === "all") return true;
-    if (selectedDepartmentGroup === "public") return (cats || []).some((c: any) => !c.department_id && c.id === template.category_id);
-    return template.department_id === selectedDepartmentGroup;
+    if (selectedDepartmentGroup === "public") return (user.role !== "admin" && template.shared) || (cats || []).some((c: any) => !c.department_id && c.id === template.category_id);
+    return template.department_id === selectedDepartmentGroup && (user.role === "admin" || !template.shared);
   };
   const statusMatch = (template: any) =>
     selectedTemplateStatus === "all" ||
@@ -1848,8 +1850,6 @@ function Templates() {
                           setEditingInfo({
                             name: t.name,
                             category_id: t.category_id,
-                            department_id: t.department_id || "",
-                            shared: t.shared,
                           });
                         }}
                       >
@@ -1995,7 +1995,7 @@ function Templates() {
       {editingInfo && (
         <Modal
           title="编辑模板信息"
-          subtitle="修改标题、分类和所属部门后立即更新模板资料。"
+          subtitle="修改标题和分类后立即更新模板资料，所属部门由分类自动确定。"
           onClose={() => {
             if (!savingInfo) {
               setEditingInfo(null);
@@ -2037,61 +2037,7 @@ function Templates() {
                   }
                 />
               </Field>
-              <Field label="模板分类">
-                <select
-                  required
-                  value={editingInfo.category_id}
-                  onChange={(e) =>
-                    setEditingInfo({
-                      ...editingInfo,
-                      category_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="" disabled>请选择该部门分类</option>
-                  {cats
-                    ?.filter(
-                      (c: any) => availableCategories(cats || [], editingInfo.department_id).some(x => x.id === c.id)
-                        || (c.id === detail.category_id && editingInfo.department_id === detail.department_id),
-                    )
-                    .map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {categoryLabel(c)}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <Field label="所属部门">
-                <select
-                  value={editingInfo.department_id || ""}
-                  onChange={(e) =>
-                    setEditingInfo({
-                      ...editingInfo,
-                      department_id: e.target.value || null,
-                      category_id: "",
-                    })
-                  }
-                >
-                  <option value="">平台公共资产</option>
-                  {deps
-                    ?.filter((d: any) => user.role === "admin" || d.id === user.department_id)
-                    .map((d: any) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={editingInfo.shared}
-                  onChange={(e) =>
-                    setEditingInfo({ ...editingInfo, shared: e.target.checked })
-                  }
-                />
-                跨部门共享
-              </label>
+              <CategoryCascade categories={cats || []} user={user} value={editingInfo.category_id} onChange={category_id => setEditingInfo({ ...editingInfo, category_id })} />
               {infoError && (
                 <p className="error" role="alert">
                   {infoError}
